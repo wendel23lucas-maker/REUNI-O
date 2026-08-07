@@ -103,12 +103,6 @@
   .transcript-actions{display:flex;gap:8px;margin-top:8px;align-items:center;}
   .transcript-actions .btn-ghost{margin-top:0;flex:1;}
   .save-feedback{font-size:12px;color:var(--calm);white-space:nowrap;}
-  .label-row{display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px;}
-  .label-row label{margin:0;}
-  .mini-btn{background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent);font-family:'Space Grotesk';font-size:11px;font-weight:600;border-radius:20px;padding:4px 10px;cursor:pointer;}
-  .mini-btn:disabled{opacity:.5;cursor:default;}
-  .summary-box{background:var(--calm-soft);border:1px solid var(--calm);border-radius:10px;padding:12px;font-size:13px;line-height:1.6;white-space:pre-wrap;}
-  .summary-box.empty2{color:var(--muted);font-style:italic;background:var(--surface-2);border-color:var(--border);}
   .note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;}
   .share-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;}
   .share-row button{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 4px;color:var(--text);font-family:inherit;font-size:11px;cursor:pointer;text-align:center;line-height:1.7;}
@@ -390,9 +384,6 @@ function openDetail(id){
       </div>
       <p class="note">A transcrição usa reconhecimento de voz do navegador (em português) e funciona melhor no Chrome. Você pode editar o texto acima livremente — o que estiver salvo aqui é o que vai para o WhatsApp, o PDF e a ata.</p>
 
-      <div class="label-row"><label style="margin:0;">Pontos importantes</label><button class="mini-btn" id="summary-btn" onclick="generateSummary('${m.id}')">✨ Filtrar com IA</button></div>
-      <div class="summary-box ${m.summary?'':'empty2'}" id="summary-box">${m.summary ? escapeHtml(m.summary) : 'Ainda não gerado. Grave/edite a transcrição e toque em "Filtrar com IA" para destacar as pautas mais relevantes.'}</div>
-
       <div id="share-actions">${renderShareActions(m)}</div>
 
       <button class="btn-ghost" onclick="deleteMeeting('${m.id}')">Excluir reunião</button>
@@ -408,15 +399,13 @@ function ataFields(m){
     time: `${fmtTime(m.start)} às ${fmtTime(m.end)}`,
     context: m.context || '-',
     notes: m.notes || '-',
-    summary: m.summary || '',
     transcript: m.transcript || '-'
   };
 }
 
 function generateAta(m){
   const f = ataFields(m);
-  const summaryBlock = f.summary ? `\n\nPontos importantes:\n${f.summary}` : '';
-  return `ATA DE REUNIÃO\n\nTítulo: ${f.title}\nData: ${f.date}\nHorário: ${f.time}\nEquipe/Contexto: ${f.context}\n\nPauta/Notas:\n${f.notes}${summaryBlock}\n\nConteúdo transcrito:\n${f.transcript}`;
+  return `ATA DE REUNIÃO\n\nTítulo: ${f.title}\nData: ${f.date}\nHorário: ${f.time}\nEquipe/Contexto: ${f.context}\n\nPauta/Notas:\n${f.notes}\n\nConteúdo transcrito:\n${f.transcript}`;
 }
 
 function renderShareActions(m){
@@ -449,7 +438,7 @@ function downloadPDF(id){
   doc.setFont('helvetica','bold'); doc.setFontSize(16);
   doc.text('Ata de Reunião', 14, 18);
   doc.setDrawColor(210); doc.line(14, 22, 196, 22);
-  const body = `Título: ${f.title}\nData: ${f.date}\nHorário: ${f.time}\nEquipe/Contexto: ${f.context}\n\nPauta/Notas:\n${f.notes}${f.summary ? `\n\nPontos importantes:\n${f.summary}` : ''}\n\nConteúdo transcrito:\n${f.transcript}`;
+  const body = `Título: ${f.title}\nData: ${f.date}\nHorário: ${f.time}\nEquipe/Contexto: ${f.context}\n\nPauta/Notas:\n${f.notes}\n\nConteúdo transcrito:\n${f.transcript}`;
   doc.setFont('helvetica','normal'); doc.setFontSize(11);
   const lines = doc.splitTextToSize(body, 180);
   doc.text(lines, 14, 32);
@@ -475,46 +464,6 @@ async function deleteMeeting(id){
 }
 
 function getMeeting(){ return meetings.find(m=>m.id===activeMeetingId); }
-
-async function generateSummary(id){
-  const m = meetings.find(x=>x.id===id);
-  if(!m) return;
-  const textarea = document.getElementById('transcript-edit');
-  const currentText = textarea ? textarea.value.trim() : m.transcript;
-  if(!currentText){
-    alert('Grave ou digite a transcrição antes de gerar os pontos importantes.');
-    return;
-  }
-  const btn = document.getElementById('summary-btn');
-  const box = document.getElementById('summary-box');
-  if(btn){ btn.disabled = true; btn.textContent = 'Filtrando…'; }
-  if(box){ box.classList.remove('empty2'); box.textContent = 'Analisando a transcrição...'; }
-  try{
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        messages: [{
-          role: "user",
-          content: `Você recebe a transcrição bruta de uma reunião em português. Extraia apenas as pautas/pontos mais relevantes e decisões, ignorando conversa fiada e repetições. Responda em tópicos curtos com "- ", direto ao ponto, sem introdução nem conclusão. Transcrição:\n\n${currentText}`
-        }]
-      })
-    });
-    const data = await response.json();
-    const text = (data.content || []).map(b => b.text || '').join('\n').trim();
-    if(!text) throw new Error('resposta vazia');
-    m.summary = text;
-    await saveMeetings();
-    if(box){ box.textContent = text; }
-  }catch(e){
-    console.error('summary error', e);
-    if(box){ box.textContent = 'Não foi possível gerar os pontos agora. Tente novamente.'; box.classList.add('empty2'); }
-  }finally{
-    if(btn){ btn.disabled = false; btn.textContent = '✨ Filtrar com IA'; }
-  }
-}
 
 async function saveTranscriptEdit(id){
   const m = meetings.find(x=>x.id===id);

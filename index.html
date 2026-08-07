@@ -3,1287 +3,550 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Anotador de Reuniões</title>
+<title>Reuniões</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
-    --bg: #F5F5F7;
-    --bg-elevated: #FBFBFD;
-    --panel: rgba(255,255,255,0.82);
-    --panel-solid: #FFFFFF;
-    --panel-soft: #F0F0F2;
-    --line: rgba(0,0,0,0.08);
-    --line-soft: rgba(0,0,0,0.05);
-    --accent: #0071E3;
-    --accent-hover: #0077ED;
-    --accent-press: #006EDB;
-    --teal: #0F9E8E;
-    --teal-soft: rgba(15,158,142,0.10);
-    --text: #1D1D1F;
-    --text-dim: #6E6E73;
-    --text-faint: #9A9AA0;
-    --danger: #FF3B30;
-    --warn: #FF9F0A;
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 1px rgba(0,0,0,0.03);
-    --shadow-md: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
-    --shadow-lg: 0 20px 50px rgba(0,0,0,0.10), 0 4px 14px rgba(0,0,0,0.05);
-    --ease: cubic-bezier(0.4, 0, 0.2, 1);
-    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
-    --mono: "SF Mono", ui-monospace, "Menlo", Consolas, monospace;
+    --bg:#0F1115;
+    --surface:#171B21;
+    --surface-2:#1E232B;
+    --border:#2A303B;
+    --text:#E8EAED;
+    --muted:#8A93A3;
+    --accent:#FF4B3E;
+    --accent-soft:rgba(255,75,62,.14);
+    --calm:#4FD1C5;
+    --calm-soft:rgba(79,209,197,.14);
+    --radius:14px;
   }
-  * { box-sizing: border-box; }
-  html,body{ height:100%; }
-  body{
-    margin:0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    -webkit-font-smoothing: antialiased;
-    display:flex;
-    overflow:hidden;
-  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);position:relative;}
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;letter-spacing:-.01em;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  header.top{padding:28px 20px 8px;}
+  .eyebrow{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.08em;}
+  .top h1{font-size:28px;margin-top:4px;}
+  main{flex:1;padding:0 20px 100px;overflow-y:auto;}
 
-  /* SIDEBAR */
-  .sidebar{
-    width: 320px;
-    min-width: 320px;
-    height: 100vh;
-    background: var(--panel);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border-right: 1px solid var(--line-soft);
-    display:flex;
-    flex-direction: column;
-  }
-  .brand{
-    padding: 28px 24px 18px;
-  }
-  .brand-mark{
-    display:flex; align-items:center; gap:10px;
-  }
-  .brand-dot{
-    width:9px; height:9px; border-radius:50%;
-    background: linear-gradient(135deg, var(--teal), #0B7A6E);
-    box-shadow: 0 0 0 4px var(--teal-soft);
-  }
-  .brand h1{
-    font-size: 17px;
-    margin:0;
-    letter-spacing: -0.01em;
-    font-weight: 650;
-    color: var(--text);
-  }
-  .brand p{
-    margin: 6px 0 0;
-    font-size: 12px;
-    color: var(--text-faint);
-    font-family: var(--sans);
-    letter-spacing: 0;
-  }
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0;}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 10px;text-align:center;}
+  .stat b{display:block;font-family:'Space Grotesk';font-size:24px;}
+  .stat span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;}
 
-  .new-btn{
-    margin: 6px 24px 18px;
-    padding: 11px 18px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 980px;
-    font-weight: 590;
-    font-size: 14px;
-    letter-spacing: -0.005em;
-    cursor: pointer;
-    display:flex; align-items:center; justify-content:center; gap:8px;
-    box-shadow: 0 1px 2px rgba(0,113,227,0.25), 0 4px 12px rgba(0,113,227,0.18);
-    transition: background .18s var(--ease), transform .12s var(--ease), box-shadow .18s var(--ease);
-  }
-  .new-btn:hover{ background: var(--accent-hover); box-shadow: 0 4px 16px rgba(0,113,227,0.28); }
-  .new-btn:active{ background: var(--accent-press); transform: scale(0.97); }
+  .quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;}
+  .quick button{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:left;color:var(--text);font-family:inherit;cursor:pointer;transition:.15s;}
+  .quick button:hover{border-color:var(--accent);}
+  .quick .ic{font-size:20px;display:block;margin-bottom:6px;}
+  .quick small{color:var(--muted);display:block;font-size:12px;margin-top:2px;}
 
-  .search-box{
-    margin: 0 24px 16px;
-    position: relative;
-  }
-  .search-box input{
-    width:100%;
-    background: var(--panel-soft);
-    border: 1px solid transparent;
-    border-radius: 10px;
-    padding: 9px 12px 9px 32px;
-    color: var(--text);
-    font-size: 13.5px;
-    font-family: var(--sans);
-    transition: background .15s var(--ease), border-color .15s var(--ease);
-  }
-  .search-box input::placeholder{ color: var(--text-faint); }
-  .search-box input:focus{ outline:none; background: var(--panel-solid); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,113,227,0.12); }
-  .search-box::before{
-    content: "";
-    position:absolute; left:12px; top:50%; transform:translateY(-52%);
-    width:12px; height:12px;
-    border: 1.6px solid var(--text-faint);
-    border-radius: 50%;
-    pointer-events:none;
-  }
-  .search-box::after{
-    content:"";
-    position:absolute; left:20.5px; top:17.5px;
-    width:5px; height:1.6px;
-    background: var(--text-faint);
-    transform: rotate(45deg);
-    pointer-events:none;
-  }
+  .section-title{display:flex;justify-content:space-between;align-items:center;margin:22px 0 10px;}
+  .section-title h2{font-size:16px;}
+  .section-title a{color:var(--calm);font-size:13px;cursor:pointer;text-decoration:none;}
 
-  .meeting-list{
-    flex:1;
-    overflow-y:auto;
-    padding: 0 14px 14px;
-  }
-  .list-label{
-    font-family: var(--sans);
-    font-size: 11.5px;
-    font-weight: 600;
-    letter-spacing: 0;
-    color: var(--text-faint);
-    padding: 8px 10px 10px;
-    text-transform: none;
-  }
-  .meeting-item{
-    padding: 12px 14px;
-    border-radius: 12px;
-    cursor: pointer;
-    margin-bottom: 3px;
-    border: 1px solid transparent;
-    transition: background .15s var(--ease);
-    position: relative;
-  }
-  .meeting-item:hover{ background: rgba(0,0,0,0.035); }
-  .meeting-item.active{
-    background: var(--panel-solid);
-    box-shadow: var(--shadow-sm), 0 0 0 1px var(--line-soft);
-  }
-  .meeting-item.active .meeting-item-title{ color: var(--accent); }
-  .meeting-item-title{
-    font-size: 13.5px; font-weight:600; color: var(--text);
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    letter-spacing: -0.003em;
-    transition: color .15s var(--ease);
-  }
-  .meeting-item-meta{
-    font-size: 11.5px; color: var(--text-faint);
-    font-family: var(--sans);
-    margin-top: 3px;
-    display:flex; justify-content:space-between; align-items:center;
-  }
-  .pill-count{
-    background: var(--teal-soft);
-    border: none;
-    color: var(--teal);
-    padding: 1.5px 7px;
-    border-radius: 10px;
-    font-size: 10.5px;
-    font-weight: 600;
-  }
-  .empty-sidebar{
-    color: var(--text-faint);
-    font-size: 12.5px;
-    text-align:center;
-    padding: 34px 16px;
-    line-height: 1.7;
-  }
+  .empty{border:1px dashed var(--border);border-radius:var(--radius);padding:28px 16px;text-align:center;color:var(--muted);font-size:13px;}
+  .empty b{display:block;color:var(--text);font-family:'Space Grotesk';font-size:15px;margin-bottom:4px;}
 
-  .sidebar-foot{
-    padding: 12px 24px 18px;
-    border-top: 1px solid var(--line-soft);
-    font-family: var(--sans);
-    font-size: 11.5px;
-    color: var(--text-faint);
-    display:flex; justify-content:space-between;
-    align-items: center;
-  }
+  .meeting-card{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--mc,var(--calm));border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;}
+  .meeting-card .info b{display:block;font-family:'Space Grotesk';font-size:15px;}
+  .meeting-card .info span{color:var(--muted);font-size:12px;}
+  .meeting-card .time{text-align:right;font-size:12px;color:var(--muted);white-space:nowrap;}
+  .meeting-card .time b{color:var(--text);display:block;font-family:'IBM Plex Mono';font-size:13px;}
+  .tag-transcript{display:inline-block;margin-top:6px;font-size:10px;color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:1px 7px;}
 
-  /* MAIN */
-  .main{
-    flex:1;
-    height: 100vh;
-    display:flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: var(--bg-elevated);
-  }
+  nav.tabs{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);max-width:480px;margin:0 auto;width:100%;}
+  nav.tabs button{background:none;border:none;color:var(--muted);font-family:inherit;font-size:11px;padding:10px 0 12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;}
+  nav.tabs button .ic{font-size:18px;}
+  nav.tabs button.active{color:var(--accent);}
 
-  .topbar{
-    padding: 26px 44px 22px;
-    border-bottom: 1px solid var(--line-soft);
-    display:flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 24px;
-    background: var(--panel);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-  }
-  .title-input{
-    background: transparent;
-    border: none;
-    color: var(--text);
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.022em;
-    width: 100%;
-    padding: 2px 0;
-    font-family: var(--sans);
-  }
-  .title-input:focus{ outline:none; }
-  .title-input::placeholder{ color: var(--text-faint); }
+  .fab{position:absolute;right:20px;bottom:88px;width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:26px;box-shadow:0 8px 20px rgba(255,75,62,.35);cursor:pointer;z-index:5;}
 
-  .meta-row{
-    display:flex; gap: 22px; margin-top: 14px; flex-wrap: wrap;
-  }
-  .meta-field{ display:flex; flex-direction:column; gap:5px; }
-  .meta-field label{
-    font-family: var(--sans); font-size: 11px; font-weight: 600; letter-spacing:0.01em;
-    color: var(--text-faint); text-transform: none;
-  }
-  .meta-field input{
-    background: var(--panel-soft);
-    border: 1px solid transparent;
-    border-radius: 8px;
-    padding: 7px 10px;
-    color: var(--text);
-    font-size: 13px;
-    font-family: var(--sans);
-    min-width: 160px;
-    transition: background .15s var(--ease), box-shadow .15s var(--ease);
-  }
-  .meta-field input:focus{ outline:none; background: var(--panel-solid); box-shadow: 0 0 0 3px rgba(0,113,227,0.12); border-color: var(--accent); }
+  .cal-head{display:flex;justify-content:space-between;align-items:center;margin:10px 0;}
+  .cal-head button{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;width:32px;height:32px;cursor:pointer;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;}
+  .cal-grid .dow{color:var(--muted);font-size:11px;padding:4px 0;}
+  .cal-grid .day{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;cursor:pointer;position:relative;border:1px solid transparent;}
+  .cal-grid .day.other{color:#3a4150;}
+  .cal-grid .day.today{border-color:var(--calm);}
+  .cal-grid .day .dot{width:4px;height:4px;border-radius:50%;background:var(--accent);margin-top:3px;}
+  .cal-grid .day:hover{background:var(--surface-2);}
 
-  .topbar-actions{ display:flex; flex-direction: column; align-items:flex-end; gap:10px; }
-  .save-indicator{
-    font-family: var(--sans);
-    font-size: 11.5px;
-    font-weight: 500;
-    color: var(--teal);
-    display:flex; align-items:center; gap:6px;
-    opacity: 0;
-    transition: opacity .3s var(--ease);
-  }
-  .save-indicator.show{ opacity: 1; }
-  .save-indicator .dot{
-    width:6px; height:6px; border-radius:50%; background: var(--teal);
-  }
-  .delete-btn{
-    background: transparent;
-    border: none;
-    color: var(--text-faint);
-    padding: 6px 4px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-family: var(--sans);
-    cursor: pointer;
-    transition: color .15s var(--ease);
-  }
-  .delete-btn:hover{
-    color: var(--danger);
-  }
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
+  .modal-bg.center{align-items:center;}
+  .modal{background:var(--surface);width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:20px;max-height:88vh;overflow-y:auto;}
+  .modal-bg.center .modal{border-radius:20px;max-height:82vh;}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .modal-head button{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
 
-  .export-row{
-    display:flex; gap:8px;
-  }
-  .export-btn{
-    background: var(--panel-solid);
-    border: 1px solid var(--line);
-    color: var(--text);
-    padding: 7px 14px;
-    border-radius: 980px;
-    font-size: 12.5px;
-    font-weight: 550;
-    cursor: pointer;
-    font-family: var(--sans);
-    white-space: nowrap;
-    box-shadow: var(--shadow-sm);
-    transition: all .15s var(--ease);
-  }
-  .export-btn:hover{
-    border-color: var(--accent);
-    color: var(--accent);
-    box-shadow: var(--shadow-md);
-    transform: translateY(-1px);
-  }
-  .export-btn:active{ transform: translateY(0); }
-  .export-btn:disabled{
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
+  label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 6px;}
+  input[type=text],input[type=datetime-local],textarea,select{width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-family:inherit;font-size:14px;}
+  textarea{resize:vertical;min-height:70px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .colors{display:flex;gap:8px;margin-top:6px;}
+  .colors span{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;}
+  .colors span.sel{border-color:#fff;}
+  .btn-primary{width:100%;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:13px;font-family:'Space Grotesk';font-weight:600;font-size:15px;margin-top:20px;cursor:pointer;}
+  .btn-ghost{width:100%;background:none;border:1px solid var(--border);color:var(--muted);border-radius:12px;padding:12px;margin-top:10px;cursor:pointer;font-family:inherit;}
 
-  .export-all-link{
-    background:none; border:none;
-    color: var(--text-faint);
-    font-family: var(--sans);
-    font-size: 11.5px;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
-    padding:0;
-    transition: color .15s var(--ease);
-  }
-  .export-all-link:hover{ color: var(--accent); }
-
-  .content{
-    flex:1;
-    overflow-y: auto;
-    padding: 32px 44px 80px;
-    max-width: 860px;
-  }
-
-  .section{
-    margin-bottom: 34px;
-  }
-  .section-head{
-    display:flex; align-items:center; gap:12px; margin-bottom: 14px;
-  }
-  .section-head h2{
-    font-size: 15px;
-    font-weight: 650;
-    letter-spacing: -0.012em;
-    color: var(--text);
-    font-family: var(--sans);
-    margin:0;
-  }
-  .section-head .line{
-    flex:1; height:1px; background: var(--line);
-  }
-
-  .rec-timer{
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text-faint);
-    min-width: 42px;
-    text-align: right;
-  }
-  .record-btn{
-    display:flex; align-items:center; gap:7px;
-    background: var(--panel-solid);
-    border: 1px solid var(--line);
-    color: var(--text);
-    padding: 6px 14px 6px 10px;
-    border-radius: 980px;
-    font-size: 12.5px;
-    font-weight: 590;
-    font-family: var(--sans);
-    cursor: pointer;
-    box-shadow: var(--shadow-sm);
-    transition: all .15s var(--ease);
-  }
-  .record-btn:hover{ box-shadow: var(--shadow-md); transform: translateY(-1px); }
-  .record-btn:active{ transform: translateY(0); }
-  .record-dot{
-    width:9px; height:9px; border-radius:50%;
-    background: var(--danger);
-    flex-shrink:0;
-  }
-  .record-btn.recording{
-    background: var(--danger);
-    border-color: var(--danger);
-    color: #fff;
-  }
-  .record-btn.recording .record-dot{
-    background: #fff;
-    animation: pulse-rec 1.2s ease-in-out infinite;
-  }
-  .record-btn:disabled{
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-  @keyframes pulse-rec{
-    0%, 100%{ opacity: 1; transform: scale(1); }
-    50%{ opacity: 0.45; transform: scale(0.8); }
-  }
-  .rec-hint{
-    margin: -6px 0 12px;
-    font-size: 12px;
-    color: var(--text-faint);
-    line-height: 1.5;
-  }
-  textarea.transcript{
-    min-height: 140px;
-    font-size: 14px;
-  }
-  textarea.transcript.live{
-    border-color: var(--danger);
-    box-shadow: 0 0 0 4px rgba(255,59,48,0.08);
-  }
-
-  textarea.notes{
-    width:100%;
-    min-height: 220px;
-    background: var(--panel-solid);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    padding: 20px 22px;
-    color: var(--text);
-    font-size: 15px;
-    line-height: 1.7;
-    letter-spacing: -0.006em;
-    font-family: var(--sans);
-    resize: vertical;
-    box-shadow: var(--shadow-sm);
-    transition: box-shadow .15s var(--ease), border-color .15s var(--ease);
-  }
-  textarea.notes:focus{ outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0,113,227,0.10); }
-  textarea.notes::placeholder{ color: var(--text-faint); }
-
-  /* ACTION ITEMS */
-  .action-list{ display:flex; flex-direction:column; gap:8px; }
-  .action-item{
-    display:flex; align-items:center; gap:12px;
-    background: var(--panel-solid);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 12px 14px;
-    box-shadow: var(--shadow-sm);
-    transition: box-shadow .15s var(--ease), transform .15s var(--ease);
-  }
-  .action-item:hover{ box-shadow: var(--shadow-md); }
-  .action-item.done{ opacity: 0.55; }
-  .action-item.done .action-text{ text-decoration: line-through; }
-  .checkbox{
-    width:20px; height:20px;
-    border: 1.8px solid var(--text-faint);
-    border-radius: 50%;
-    cursor:pointer;
-    flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-    transition: all .15s var(--ease);
-  }
-  .checkbox:hover{ border-color: var(--teal); }
-  .checkbox.checked{
-    background: var(--teal);
-    border-color: var(--teal);
-  }
-  .checkbox.checked::after{
-    content:"✓";
-    color: #fff;
-    font-size: 12px;
-    font-weight:700;
-  }
-  .action-text{
-    flex:1;
-    background: transparent;
-    border: none;
-    color: var(--text);
-    font-size: 14px;
-    letter-spacing: -0.006em;
-    font-family: var(--sans);
-  }
-  .action-text:focus{ outline:none; }
-  .action-text::placeholder{ color: var(--text-faint); }
-  .action-owner{
-    background: var(--panel-soft);
-    border: 1px solid transparent;
-    border-radius: 8px;
-    padding: 5px 10px;
-    color: var(--text-dim);
-    font-size: 12px;
-    font-family: var(--sans);
-    width: 120px;
-    flex-shrink:0;
-    transition: background .15s var(--ease);
-  }
-  .action-owner:focus{ outline:none; background: var(--panel-solid); box-shadow: 0 0 0 3px rgba(0,113,227,0.12); }
-  .action-owner::placeholder{ color: var(--text-faint); }
-  .remove-action{
-    background: none; border:none; color: var(--text-faint);
-    cursor:pointer; font-size: 18px; line-height:1; padding: 2px 4px;
-    flex-shrink:0;
-    transition: color .15s var(--ease);
-  }
-  .remove-action:hover{ color: var(--danger); }
-
-  .add-action-btn{
-    margin-top: 12px;
-    background: none;
-    border: 1.5px dashed var(--line);
-    color: var(--text-dim);
-    padding: 12px 16px;
-    border-radius: 14px;
-    font-size: 13.5px;
-    font-weight: 500;
-    cursor: pointer;
-    width:100%;
-    text-align: left;
-    font-family: var(--sans);
-    transition: all .15s var(--ease);
-  }
-  .add-action-btn:hover{
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(0,113,227,0.04);
-  }
-
-  /* EMPTY STATE */
-  .empty-main{
-    flex:1;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    color: var(--text-faint);
-    gap: 18px;
-  }
-  .empty-main .glyph{
-    width:64px; height:64px;
-    background: var(--panel-solid);
-    border-radius: 20px;
-    display:flex; align-items:center; justify-content:center;
-    font-size: 26px;
-    font-weight: 300;
-    color: var(--accent);
-    box-shadow: var(--shadow-lg);
-  }
-  .empty-main h3{ margin:0; color: var(--text); font-size:19px; font-weight:650; letter-spacing:-0.015em; }
-  .empty-main p{ margin:0; font-size: 13.5px; max-width: 280px; text-align:center; line-height:1.6; color: var(--text-faint); }
-
-  ::-webkit-scrollbar{ width: 8px; height:8px; }
-  ::-webkit-scrollbar-track{ background: transparent; }
-  ::-webkit-scrollbar-thumb{ background: rgba(0,0,0,0.14); border-radius: 4px; background-clip: padding-box; }
-  ::-webkit-scrollbar-thumb:hover{ background: rgba(0,0,0,0.24); }
-
-  @media (max-width: 720px){
-    .sidebar{ width: 100%; position:absolute; z-index:5; transform: translateX(-100%); transition: transform .25s var(--ease); }
-    .sidebar.open{ transform: translateX(0); }
-    .topbar{ padding: 18px 20px; }
-    .content{ padding: 20px 20px 48px; }
-  }
+  .rec-box{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;margin-top:16px;}
+  .rec-btn{width:64px;height:64px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:24px;cursor:pointer;transition:.2s;}
+  .rec-btn.recording{animation:pulse 1.4s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 var(--accent-soft);}70%{box-shadow:0 0 0 18px rgba(255,75,62,0);}100%{box-shadow:0 0 0 0 rgba(255,75,62,0);}}
+  .wave{display:flex;align-items:center;justify-content:center;gap:3px;height:36px;margin:12px 0;}
+  .wave i{width:3px;background:var(--accent);border-radius:2px;height:6px;transition:height .08s;}
+  .rec-status{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono';margin-top:8px;}
+  .transcript-box{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:12px;font-size:13px;line-height:1.6;max-height:220px;overflow-y:auto;white-space:pre-wrap;}
+  .transcript-box.empty2{color:var(--muted);font-style:italic;}
+  .note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;}
+  .share-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;}
+  .share-row button{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 4px;color:var(--text);font-family:inherit;font-size:11px;cursor:pointer;text-align:center;line-height:1.7;}
+  .share-row button:hover{border-color:var(--calm);}
 </style>
 </head>
 <body>
+<div class="app" id="app">
 
-  <div class="sidebar">
-    <div class="brand">
-      <div class="brand-mark">
-        <div class="brand-dot"></div>
-        <h1>ANOTADOR DE REUNIÕES</h1>
-      </div>
-      <p id="storage-status">carregando…</p>
-    </div>
+  <header class="top">
+    <div class="eyebrow" id="greeting">Bom dia</div>
+    <h1>Reuniões</h1>
+  </header>
 
-    <button class="new-btn" id="btn-new">+ Nova reunião</button>
+  <main id="main"></main>
 
-    <div class="search-box">
-      <input type="text" id="search" placeholder="Buscar reunião...">
-    </div>
+  <button class="fab" onclick="openNewMeeting()">+</button>
 
-    <div class="meeting-list" id="meeting-list">
-      <div class="list-label">Reuniões</div>
-      <div class="empty-sidebar" id="empty-sidebar">Nenhuma reunião ainda.<br>Clique em "Nova reunião" para começar.</div>
-    </div>
-
-    <div class="sidebar-foot">
-      <span id="foot-count">0 reuniões</span>
-      <button class="export-all-link" id="btn-export-all">exportar tudo</button>
-    </div>
-  </div>
-
-  <div class="main" id="main">
-    <div class="empty-main" id="empty-main">
-      <div class="glyph">+</div>
-      <h3>Nenhuma reunião selecionada</h3>
-      <p>Crie uma nova reunião ou selecione uma existente na barra lateral para começar a anotar.</p>
-    </div>
-
-    <div id="editor" style="display:none; height:100%; flex-direction:column;">
-      <div class="topbar">
-        <div style="flex:1;">
-          <input type="text" class="title-input" id="field-title" placeholder="Título da reunião">
-          <div class="meta-row">
-            <div class="meta-field">
-              <label>Data</label>
-              <input type="date" id="field-date">
-            </div>
-            <div class="meta-field">
-              <label>Horário</label>
-              <input type="time" id="field-time">
-            </div>
-            <div class="meta-field" style="flex:1;">
-              <label>Participantes</label>
-              <input type="text" id="field-participants" placeholder="Nomes separados por vírgula" style="width:100%; min-width: 220px;">
-            </div>
-          </div>
-        </div>
-        <div class="topbar-actions">
-          <div class="save-indicator" id="save-indicator"><span class="dot"></span> salvo</div>
-          <div class="export-row">
-            <button class="export-btn" id="btn-export-pdf">Exportar ata (PDF)</button>
-            <button class="export-btn" id="btn-export-xlsx">Exportar (Excel)</button>
-          </div>
-          <button class="delete-btn" id="btn-delete">Excluir reunião</button>
-        </div>
-      </div>
-
-      <div class="content">
-        <div class="section">
-          <div class="section-head">
-            <h2>Transcrição da reunião</h2>
-            <div class="line"></div>
-            <span class="rec-timer" id="rec-timer"></span>
-            <button class="record-btn" id="btn-record">
-              <span class="record-dot"></span>
-              <span id="record-label">Gravar</span>
-            </button>
-          </div>
-          <p class="rec-hint" id="rec-hint">Grava pelo microfone e transcreve automaticamente enquanto vocês falam. Funciona melhor no Chrome, com internet ativa.</p>
-          <textarea class="notes transcript" id="field-transcript" placeholder="A transcrição aparece aqui em tempo real. Você também pode editar ou colar texto manualmente."></textarea>
-        </div>
-
-        <div class="section">
-          <div class="section-head"><h2>Anotações</h2><div class="line"></div></div>
-          <textarea class="notes" id="field-notes" placeholder="Anote os pontos discutidos, decisões tomadas, pendências..."></textarea>
-        </div>
-
-        <div class="section">
-          <div class="section-head"><h2>Itens de ação</h2><div class="line"></div></div>
-          <div class="action-list" id="action-list"></div>
-          <button class="add-action-btn" id="btn-add-action">+ Adicionar item de ação</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="home" onclick="setTab('home')"><span class="ic">🏠</span>Início</button>
+    <button class="tab-btn" data-tab="calendar" onclick="setTab('calendar')"><span class="ic">🗓️</span>Calendário</button>
+    <button class="tab-btn" data-tab="history" onclick="setTab('history')"><span class="ic">📋</span>Histórico</button>
+    <button class="tab-btn" data-tab="reports" onclick="setTab('reports')"><span class="ic">📊</span>Relatórios</button>
+  </nav>
+</div>
 
 <script>
-(function(){
-  const STORAGE_PREFIX = 'meeting:';
-  let meetings = {};
-  let activeId = null;
-  let saveTimer = null;
+const STORAGE_KEY = 'meetings';
+let meetings = [];
+let currentTab = 'home';
+let calRef = new Date();
+let activeMeetingId = null;
 
-  const el = {
-    list: document.getElementById('meeting-list'),
-    emptySidebar: document.getElementById('empty-sidebar'),
-    footCount: document.getElementById('foot-count'),
-    storageStatus: document.getElementById('storage-status'),
-    emptyMain: document.getElementById('empty-main'),
-    editor: document.getElementById('editor'),
-    title: document.getElementById('field-title'),
-    date: document.getElementById('field-date'),
-    time: document.getElementById('field-time'),
-    participants: document.getElementById('field-participants'),
-    notes: document.getElementById('field-notes'),
-    transcript: document.getElementById('field-transcript'),
-    recordBtn: document.getElementById('btn-record'),
-    recordLabel: document.getElementById('record-label'),
-    recTimer: document.getElementById('rec-timer'),
-    recHint: document.getElementById('rec-hint'),
-    actionList: document.getElementById('action-list'),
-    saveIndicator: document.getElementById('save-indicator'),
-    search: document.getElementById('search'),
+// audio/recognition state
+let mediaStream=null, mediaRecorder=null, recognition=null, audioCtx=null, analyser=null, rafId=null;
+let recording=false, finalTranscript='', chunks=[];
+
+const COLORS = ['#FF4B3E','#4FD1C5','#F5C451','#8B7CF6','#6FA8FF'];
+
+function uid(){return 'm_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);}
+
+async function loadMeetings(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    meetings = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){ meetings = []; }
+  render();
+}
+async function saveMeetings(){
+  try{ await window.storage.set(STORAGE_KEY, JSON.stringify(meetings), false); }
+  catch(e){ console.error('storage error', e); }
+}
+
+function fmtDate(d){return new Date(d).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});}
+function fmtTime(d){return new Date(d).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+function sameDay(a,b){const x=new Date(a),y=new Date(b);return x.getFullYear()===y.getFullYear()&&x.getMonth()===y.getMonth()&&x.getDate()===y.getDate();}
+
+function setGreeting(){
+  const h = new Date().getHours();
+  document.getElementById('greeting').textContent = h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
+}
+
+function setTab(t){
+  currentTab = t;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
+  render();
+}
+
+function render(){
+  const main = document.getElementById('main');
+  if(currentTab==='home') main.innerHTML = renderHome();
+  else if(currentTab==='calendar') main.innerHTML = renderCalendar();
+  else if(currentTab==='history') main.innerHTML = renderHistory();
+  else if(currentTab==='reports') main.innerHTML = renderReports();
+}
+
+function renderHome(){
+  const now = new Date();
+  const todayList = meetings.filter(m=>sameDay(m.start, now)).sort((a,b)=>new Date(a.start)-new Date(b.start));
+  const weekAgo = new Date(now); weekAgo.setDate(now.getDate()-7);
+  const monthAgo = new Date(now); monthAgo.setDate(now.getDate()-30);
+  const weekCount = meetings.filter(m=>new Date(m.start)>=weekAgo && new Date(m.start)<=now).length;
+  const monthCount = meetings.filter(m=>new Date(m.start)>=monthAgo && new Date(m.start)<=now).length;
+
+  return `
+    <div class="stats">
+      <div class="stat"><b>${todayList.length}</b><span>Hoje</span></div>
+      <div class="stat"><b>${weekCount}</b><span>Esta semana</span></div>
+      <div class="stat"><b>${monthCount}</b><span>Este mês</span></div>
+    </div>
+    <div class="quick">
+      <button onclick="openNewMeeting()"><span class="ic">📅</span>Nova reunião<small>Agendar agora</small></button>
+      <button onclick="setTab('reports')"><span class="ic">📊</span>Relatórios<small>Ver análises</small></button>
+      <button onclick="setTab('calendar')"><span class="ic">🗓️</span>Calendário<small>Ver agenda</small></button>
+      <button onclick="setTab('history')"><span class="ic">📋</span>Histórico<small>Todos os registros</small></button>
+    </div>
+    <div class="section-title"><h2>Hoje</h2><a onclick="setTab('calendar')">Ver tudo</a></div>
+    ${todayList.length? todayList.map(cardHtml).join('') : emptyState('Nada por aqui','Suas reuniões de hoje aparecem neste espaço.')}
+  `;
+}
+
+function emptyState(title, sub){
+  return `<div class="empty"><b>${title}</b>${sub}</div>`;
+}
+
+function cardHtml(m){
+  return `<div class="meeting-card" style="--mc:${m.color}" onclick="openDetail('${m.id}')">
+    <div class="info">
+      <b>${escapeHtml(m.title||'Sem título')}</b>
+      <span>${escapeHtml(m.context||'')}</span>
+      ${m.transcript ? '<span class="tag-transcript">📝 Transcrição</span>' : ''}
+    </div>
+    <div class="time"><b>${fmtTime(m.start)}</b>${fmtDate(m.start)}</div>
+  </div>`;
+}
+
+function escapeHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+function renderHistory(){
+  const list = [...meetings].sort((a,b)=>new Date(b.start)-new Date(a.start));
+  return `
+    <div class="section-title"><h2>Histórico</h2></div>
+    ${list.length? list.map(cardHtml).join('') : emptyState('Nenhum registro ainda','As reuniões que você criar vão aparecer aqui — nada vem pré-carregado.')}
+  `;
+}
+
+function renderReports(){
+  const now = new Date();
+  const startWeek = new Date(now); startWeek.setDate(now.getDate()-7);
+  const startMonth = new Date(now); startMonth.setMonth(now.getMonth()-1);
+  const startQ = new Date(now); startQ.setMonth(now.getMonth()-3);
+  const count = (from)=>meetings.filter(m=>new Date(m.start)>=from && new Date(m.start)<=now).length;
+  return `
+    <div class="section-title"><h2>Relatórios</h2></div>
+    <div class="stats" style="grid-template-columns:1fr 1fr;">
+      <div class="stat"><b>${count(startWeek)}</b><span>Semana</span></div>
+      <div class="stat"><b>${count(startMonth)}</b><span>Mês</span></div>
+      <div class="stat"><b>${count(startQ)}</b><span>Trimestre</span></div>
+      <div class="stat"><b>${meetings.length}</b><span>Total</span></div>
+    </div>
+    <div class="section-title"><h2>Com transcrição</h2></div>
+    <div class="stat" style="text-align:left;padding:16px;">
+      <b style="font-size:20px;">${meetings.filter(m=>m.transcript).length}</b>
+      <span style="display:block;margin-top:4px;">de ${meetings.length} reuniões têm transcrição gravada</span>
+    </div>
+  `;
+}
+
+function renderCalendar(){
+  const y = calRef.getFullYear(), mo = calRef.getMonth();
+  const first = new Date(y,mo,1);
+  const startOffset = first.getDay();
+  const daysInMonth = new Date(y,mo+1,0).getDate();
+  const monthName = calRef.toLocaleDateString('pt-BR',{month:'long', year:'numeric'});
+  const today = new Date();
+  let cells = '';
+  for(let i=0;i<startOffset;i++){
+    const d = new Date(y,mo,1-(startOffset-i));
+    cells += `<div class="day other">${d.getDate()}</div>`;
+  }
+  for(let d=1; d<=daysInMonth; d++){
+    const dateObj = new Date(y,mo,d);
+    const hasM = meetings.some(m=>sameDay(m.start, dateObj));
+    const isToday = sameDay(dateObj, today);
+    cells += `<div class="day${isToday?' today':''}" onclick="showDay('${dateObj.toISOString()}')">${d}${hasM?'<div class="dot"></div>':''}</div>`;
+  }
+  return `
+    <div class="cal-head">
+      <button onclick="calRef.setMonth(calRef.getMonth()-1); render();">‹</button>
+      <h2 style="text-transform:capitalize;">${monthName}</h2>
+      <button onclick="calRef.setMonth(calRef.getMonth()+1); render();">›</button>
+    </div>
+    <div class="cal-grid">
+      ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d=>`<div class="dow">${d}</div>`).join('')}
+      ${cells}
+    </div>
+    <div id="day-list" style="margin-top:18px;"></div>
+  `;
+}
+
+function showDay(iso){
+  const d = new Date(iso);
+  const list = meetings.filter(m=>sameDay(m.start,d)).sort((a,b)=>new Date(a.start)-new Date(b.start));
+  document.getElementById('day-list').innerHTML = `
+    <div class="section-title"><h2>${d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'})}</h2></div>
+    ${list.length? list.map(cardHtml).join('') : emptyState('Sem reuniões', 'Nenhuma reunião marcada para este dia.')}
+  `;
+}
+
+// ---- New meeting modal ----
+function openNewMeeting(){
+  const now = new Date();
+  const startISO = new Date(now.getTime()+60*60*1000).toISOString().slice(0,16);
+  const endISO = new Date(now.getTime()+2*60*60*1000).toISOString().slice(0,16);
+  const html = `
+  <div class="modal-bg" id="modal-bg" onclick="if(event.target.id==='modal-bg')closeModal()">
+    <div class="modal">
+      <div class="modal-head"><h3>Nova reunião</h3><button onclick="closeModal()">✕</button></div>
+      <label>Título</label>
+      <input type="text" id="f-title" placeholder="Ex: Alinhamento de projeto">
+      <label>Equipe / Contexto</label>
+      <input type="text" id="f-context" placeholder="Ex: Time comercial">
+      <div class="row2">
+        <div><label>Início</label><input type="datetime-local" id="f-start" value="${startISO}"></div>
+        <div><label>Fim</label><input type="datetime-local" id="f-end" value="${endISO}"></div>
+      </div>
+      <label>Recorrência</label>
+      <select id="f-rec">
+        <option value="once">Uma vez</option>
+        <option value="daily">Diária</option>
+        <option value="weekly">Semanal</option>
+        <option value="monthly">Mensal</option>
+      </select>
+      <label>Notas</label>
+      <textarea id="f-notes" placeholder="Pauta, links, observações..."></textarea>
+      <label>Cor</label>
+      <div class="colors" id="f-colors">
+        ${COLORS.map((c,i)=>`<span style="background:${c}" class="${i===0?'sel':''}" onclick="selectColor(this,'${c}')" data-c="${c}"></span>`).join('')}
+      </div>
+      <button class="btn-primary" onclick="saveNewMeeting()">Salvar reunião</button>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function selectColor(el,c){
+  document.querySelectorAll('#f-colors span').forEach(s=>s.classList.remove('sel'));
+  el.classList.add('sel');
+}
+function closeModal(){
+  const bg = document.getElementById('modal-bg');
+  if(bg) bg.remove();
+  stopEverything(false);
+}
+async function saveNewMeeting(){
+  const title = document.getElementById('f-title').value.trim();
+  if(!title){ document.getElementById('f-title').focus(); return; }
+  const color = document.querySelector('#f-colors .sel')?.dataset.c || COLORS[0];
+  const m = {
+    id: uid(),
+    title,
+    context: document.getElementById('f-context').value.trim(),
+    start: new Date(document.getElementById('f-start').value).toISOString(),
+    end: new Date(document.getElementById('f-end').value).toISOString(),
+    recurrence: document.getElementById('f-rec').value,
+    notes: document.getElementById('f-notes').value.trim(),
+    color,
+    transcript: ''
   };
+  meetings.push(m);
+  await saveMeetings();
+  closeModal();
+  render();
+}
 
-  function uid(){ return 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
-  function todayISO(){ const d = new Date(); return d.toISOString().slice(0,10); }
-  function nowTime(){ const d = new Date(); return d.toTimeString().slice(0,5); }
+// ---- Detail modal with recording/transcription ----
+function openDetail(id){
+  activeMeetingId = id;
+  const m = meetings.find(x=>x.id===id);
+  if(!m) return;
+  const html = `
+  <div class="modal-bg center" id="modal-bg" onclick="if(event.target.id==='modal-bg'){closeModal();}">
+    <div class="modal">
+      <div class="modal-head"><h3>${escapeHtml(m.title)}</h3><button onclick="closeModal()">✕</button></div>
+      <div class="eyebrow">${escapeHtml(m.context||'')}</div>
+      <p class="mono" style="color:var(--muted);font-size:13px;">${fmtDate(m.start)} · ${fmtTime(m.start)} – ${fmtTime(m.end)}</p>
+      ${m.notes ? `<p style="font-size:13px;">${escapeHtml(m.notes)}</p>` : ''}
 
-  /* ===== GRAVAÇÃO E TRANSCRIÇÃO ===== */
-  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognition = null;
-  let isRecording = false;
-  let manualStop = false;
-  let recStartTime = null;
-  let recTimerInterval = null;
-  let interimBuffer = '';
+      <div class="rec-box" id="rec-box">
+        <button class="rec-btn" id="rec-btn" onclick="toggleRecording()">🎙️</button>
+        <div class="wave" id="wave">${Array.from({length:16}).map(()=>'<i></i>').join('')}</div>
+        <div class="rec-status" id="rec-status">Toque para gravar e transcrever</div>
+      </div>
 
-  function setupRecognition(){
-    if(!SpeechRecognitionAPI) return null;
-    const r = new SpeechRecognitionAPI();
-    r.lang = 'pt-BR';
-    r.continuous = true;
-    r.interimResults = true;
+      <label>Transcrição</label>
+      <div class="transcript-box ${m.transcript?'':'empty2'}" id="transcript-view">${m.transcript ? escapeHtml(m.transcript) : 'Nenhuma transcrição ainda. Grave a reunião para transcrever automaticamente.'}</div>
+      <p class="note">A transcrição usa reconhecimento de voz do navegador (em português) e funciona melhor no Chrome. O áudio gravado não é enviado nem salvo — apenas o texto transcrito é guardado nesta reunião.</p>
 
-    r.onresult = (event) => {
-      let finalText = '';
-      let interimText = '';
-      for(let i = event.resultIndex; i < event.results.length; i++){
-        const res = event.results[i];
-        if(res.isFinal){
-          finalText += res[0].transcript;
-        } else {
-          interimText += res[0].transcript;
-        }
+      <div id="share-actions">${renderShareActions(m)}</div>
+
+      <button class="btn-ghost" onclick="deleteMeeting('${m.id}')">Excluir reunião</button>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function ataFields(m){
+  return {
+    title: m.title || 'Sem título',
+    date: fmtDate(m.start),
+    time: `${fmtTime(m.start)} às ${fmtTime(m.end)}`,
+    context: m.context || '-',
+    notes: m.notes || '-',
+    transcript: m.transcript || '-'
+  };
+}
+
+function generateAta(m){
+  const f = ataFields(m);
+  return `ATA DE REUNIÃO\n\nTítulo: ${f.title}\nData: ${f.date}\nHorário: ${f.time}\nEquipe/Contexto: ${f.context}\n\nPauta/Notas:\n${f.notes}\n\nConteúdo transcrito:\n${f.transcript}`;
+}
+
+function renderShareActions(m){
+  if(!m.transcript){
+    return `<p class="note" style="margin-top:16px;">As opções de compartilhamento (WhatsApp, PDF, ata) aparecem aqui assim que você gravar e transcrever a reunião.</p>`;
+  }
+  return `
+    <label>Compartilhar</label>
+    <div class="share-row">
+      <button onclick="shareWhatsApp('${m.id}')">💬<br>WhatsApp</button>
+      <button onclick="downloadPDF('${m.id}')">📄<br>PDF</button>
+      <button onclick="copyAta('${m.id}')">📋<br>Copiar ata</button>
+    </div>
+    <div id="copy-feedback" style="text-align:center;font-size:12px;color:var(--calm);height:14px;margin-top:4px;"></div>
+  `;
+}
+
+function shareWhatsApp(id){
+  const m = meetings.find(x=>x.id===id); if(!m) return;
+  const url = 'https://wa.me/?text=' + encodeURIComponent(generateAta(m));
+  window.open(url, '_blank');
+}
+
+function downloadPDF(id){
+  const m = meetings.find(x=>x.id===id); if(!m) return;
+  if(!window.jspdf){ alert('Exportação de PDF indisponível no momento.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const f = ataFields(m);
+  doc.setFont('helvetica','bold'); doc.setFontSize(16);
+  doc.text('Ata de Reunião', 14, 18);
+  doc.setDrawColor(210); doc.line(14, 22, 196, 22);
+  const body = `Título: ${f.title}\nData: ${f.date}\nHorário: ${f.time}\nEquipe/Contexto: ${f.context}\n\nPauta/Notas:\n${f.notes}\n\nConteúdo transcrito:\n${f.transcript}`;
+  doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  const lines = doc.splitTextToSize(body, 180);
+  doc.text(lines, 14, 32);
+  doc.save(`ata-${f.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')||'reuniao'}.pdf`);
+}
+
+function copyAta(id){
+  const m = meetings.find(x=>x.id===id); if(!m) return;
+  const text = generateAta(m);
+  navigator.clipboard.writeText(text).then(()=>{
+    const fb = document.getElementById('copy-feedback');
+    if(fb){ fb.textContent = 'Ata copiada!'; setTimeout(()=>{ if(fb) fb.textContent=''; }, 2000); }
+  }).catch(()=>{
+    alert('Não foi possível copiar automaticamente. Selecione e copie o texto manualmente.');
+  });
+}
+
+async function deleteMeeting(id){
+  meetings = meetings.filter(m=>m.id!==id);
+  await saveMeetings();
+  closeModal();
+  render();
+}
+
+function getMeeting(){ return meetings.find(m=>m.id===activeMeetingId); }
+
+async function toggleRecording(){
+  if(recording){ await stopEverything(true); }
+  else { await startRecording(); }
+}
+
+async function startRecording(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  try{
+    mediaStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  }catch(e){
+    document.getElementById('rec-status').textContent = 'Não foi possível acessar o microfone.';
+    return;
+  }
+  recording = true;
+  finalTranscript = getMeeting()?.transcript || '';
+  document.getElementById('rec-btn').classList.add('recording');
+  document.getElementById('rec-btn').textContent = '⏹️';
+  document.getElementById('rec-status').textContent = 'Gravando e transcrevendo...';
+
+  // waveform visualization
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  const src = audioCtx.createMediaStreamSource(mediaStream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 64;
+  src.connect(analyser);
+  const bars = document.querySelectorAll('#wave i');
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  function drawWave(){
+    analyser.getByteFrequencyData(data);
+    bars.forEach((b,i)=>{
+      const v = data[i % data.length] || 0;
+      b.style.height = Math.max(6, (v/255)*32) + 'px';
+    });
+    rafId = requestAnimationFrame(drawWave);
+  }
+  drawWave();
+
+  // speech recognition
+  if(SR){
+    recognition = new SR();
+    recognition.lang = 'pt-BR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (e)=>{
+      let interim = '';
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const t = e.results[i][0].transcript;
+        if(e.results[i].isFinal) finalTranscript += t + ' ';
+        else interim += t;
       }
-      if(finalText.trim()){
-        const needsSpace = el.transcript.value && !/\s$/.test(el.transcript.value);
-        el.transcript.value += (needsSpace ? ' ' : '') + finalText.trim() + ' ';
-        el.transcript.dispatchEvent(new Event('input'));
-        el.transcript.scrollTop = el.transcript.scrollHeight;
+      const view = document.getElementById('transcript-view');
+      if(view){
+        view.classList.remove('empty2');
+        view.textContent = finalTranscript + interim;
       }
-      interimBuffer = interimText;
     };
-
-    r.onerror = (event) => {
-      if(event.error === 'no-speech' || event.error === 'aborted') return;
-      if(event.error === 'not-allowed' || event.error === 'permission-denied'){
-        el.recHint.textContent = 'Permissão de microfone negada. Habilite o acesso ao microfone nas configurações do navegador.';
-        stopRecording();
-        return;
-      }
-      if(event.error === 'network'){
-        el.recHint.textContent = 'Falha de conexão durante a transcrição. Verifique sua internet.';
-        return;
-      }
-    };
-
-    r.onend = () => {
-      // Chrome encerra o reconhecimento periodicamente; reinicia automaticamente se ainda estiver gravando
-      if(isRecording && !manualStop){
-        try{ r.start(); }catch(e){ /* já iniciado */ }
-      }
-    };
-
-    return r;
+    recognition.onerror = ()=>{};
+    recognition.onend = ()=>{ if(recording) { try{recognition.start();}catch(e){} } };
+    recognition.start();
+  }else{
+    document.getElementById('rec-status').textContent = 'Gravando (transcrição indisponível neste navegador)...';
   }
+}
 
-  function formatElapsed(ms){
-    const totalSec = Math.floor(ms/1000);
-    const m = String(Math.floor(totalSec/60)).padStart(2,'0');
-    const s = String(totalSec%60).padStart(2,'0');
-    return `${m}:${s}`;
-  }
+async function stopEverything(persist){
+  recording = false;
+  if(recognition){ try{ recognition.onend=null; recognition.stop(); }catch(e){} recognition=null; }
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+  if(audioCtx){ try{audioCtx.close();}catch(e){} audioCtx=null; }
+  if(mediaStream){ mediaStream.getTracks().forEach(t=>t.stop()); mediaStream=null; }
 
-  function startRecording(){
-    if(!SpeechRecognitionAPI){
-      el.recHint.textContent = 'Transcrição por voz não é suportada neste navegador. Tente abrir este arquivo no Google Chrome.';
-      return;
-    }
-    if(!activeId) return;
-    manualStop = false;
-    recognition = setupRecognition();
-    if(!recognition) return;
-    try{
-      recognition.start();
-    }catch(e){
-      console.error('Erro ao iniciar gravação', e);
-      return;
-    }
-    isRecording = true;
-    recStartTime = Date.now();
-    el.recordBtn.classList.add('recording');
-    el.recordLabel.textContent = 'Parar';
-    el.transcript.classList.add('live');
-    el.recHint.textContent = 'Gravando e transcrevendo… fale perto do microfone.';
-    recTimerInterval = setInterval(()=>{
-      el.recTimer.textContent = formatElapsed(Date.now() - recStartTime);
-    }, 500);
-  }
+  const btn = document.getElementById('rec-btn');
+  if(btn){ btn.classList.remove('recording'); btn.textContent='🎙️'; }
+  const status = document.getElementById('rec-status');
+  if(status) status.textContent = 'Toque para gravar e transcrever';
 
-  function stopRecording(){
-    manualStop = true;
-    isRecording = false;
-    if(recognition){
-      try{ recognition.stop(); }catch(e){ /* ignore */ }
-    }
-    clearInterval(recTimerInterval);
-    el.recTimer.textContent = '';
-    el.recordBtn.classList.remove('recording');
-    el.recordLabel.textContent = 'Gravar';
-    el.transcript.classList.remove('live');
-    el.recHint.textContent = 'Grava pelo microfone e transcreve automaticamente enquanto vocês falam. Funciona melhor no Chrome, com internet ativa.';
-    if(activeId){
-      const m = meetings[activeId];
-      if(m){ m.transcript = el.transcript.value; m.updatedAt = Date.now(); persist(m); }
+  if(persist && activeMeetingId){
+    const m = getMeeting();
+    if(m){
+      m.transcript = finalTranscript.trim();
+      await saveMeetings();
+      const shareDiv = document.getElementById('share-actions');
+      if(shareDiv) shareDiv.innerHTML = renderShareActions(m);
+      render();
     }
   }
+}
 
-  el.recordBtn.addEventListener('click', ()=>{
-    if(!activeId){ return; }
-    if(isRecording){ stopRecording(); } else { startRecording(); }
-  });
-
-  if(!SpeechRecognitionAPI){
-    el.recHint.textContent = 'Transcrição por voz não é suportada neste navegador. Abra este arquivo no Google Chrome para gravar e transcrever.';
-  }
-
-
-  function fmtDate(iso){
-    if(!iso) return 'sem data';
-    const [y,m,d] = iso.split('-');
-    return `${d}/${m}/${y}`;
-  }
-
-  async function loadAll(){
-    try{
-      const res = await window.storage.list(STORAGE_PREFIX, false);
-      const keys = (res && res.keys) || [];
-      const loaded = {};
-      for(const k of keys){
-        try{
-          const item = await window.storage.get(k, false);
-          if(item && item.value){
-            const data = JSON.parse(item.value);
-            loaded[data.id] = data;
-          }
-        }catch(e){ /* skip unreadable key */ }
-      }
-      meetings = loaded;
-      el.storageStatus.textContent = 'dados salvos no dispositivo';
-    }catch(e){
-      console.error('Erro ao carregar reuniões', e);
-      el.storageStatus.textContent = 'erro ao carregar dados';
-    }
-    renderList();
-  }
-
-  async function persist(meeting){
-    try{
-      await window.storage.set(STORAGE_PREFIX + meeting.id, JSON.stringify(meeting), false);
-      flashSaved();
-    }catch(e){
-      console.error('Erro ao salvar', e);
-    }
-  }
-
-  async function removeMeeting(id){
-    try{
-      await window.storage.delete(STORAGE_PREFIX + id, false);
-    }catch(e){ console.error('Erro ao excluir', e); }
-  }
-
-  function flashSaved(){
-    el.saveIndicator.classList.add('show');
-    clearTimeout(flashSaved._t);
-    flashSaved._t = setTimeout(()=> el.saveIndicator.classList.remove('show'), 1400);
-  }
-
-  function scheduleSave(){
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(()=>{
-      if(!activeId) return;
-      const m = meetings[activeId];
-      if(m) persist(m);
-      renderList();
-    }, 500);
-  }
-
-  function renderList(){
-    const q = (el.search.value || '').toLowerCase().trim();
-    const items = Object.values(meetings)
-      .filter(m => !q || (m.title||'').toLowerCase().includes(q) || (m.participants||'').toLowerCase().includes(q))
-      .sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
-
-    el.list.querySelectorAll('.meeting-item').forEach(n => n.remove());
-    el.footCount.textContent = `${Object.keys(meetings).length} reuni${Object.keys(meetings).length===1?'ão':'ões'}`;
-
-    if(items.length === 0){
-      el.emptySidebar.style.display = 'block';
-      return;
-    }
-    el.emptySidebar.style.display = 'none';
-
-    for(const m of items){
-      const done = (m.actions||[]).filter(a=>a.done).length;
-      const total = (m.actions||[]).length;
-      const div = document.createElement('div');
-      div.className = 'meeting-item' + (m.id === activeId ? ' active' : '');
-      div.innerHTML = `
-        <div class="meeting-item-title">${escapeHtml(m.title) || 'Sem título'}</div>
-        <div class="meeting-item-meta">
-          <span>${fmtDate(m.date)}${m.time ? ' · ' + m.time : ''}</span>
-          ${total > 0 ? `<span class="pill-count">${done}/${total}</span>` : ''}
-        </div>`;
-      div.addEventListener('click', ()=> selectMeeting(m.id));
-      el.list.appendChild(div);
-    }
-  }
-
-  function escapeHtml(s){
-    if(!s) return '';
-    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  function selectMeeting(id){
-    if(isRecording) stopRecording();
-    activeId = id;
-    const m = meetings[id];
-    if(!m){ showEmptyMain(); return; }
-    el.emptyMain.style.display = 'none';
-    el.editor.style.display = 'flex';
-
-    el.title.value = m.title || '';
-    el.date.value = m.date || '';
-    el.time.value = m.time || '';
-    el.participants.value = m.participants || '';
-    el.notes.value = m.notes || '';
-    el.transcript.value = m.transcript || '';
-    renderActions(m);
-    renderList();
-  }
-
-  function showEmptyMain(){
-    if(isRecording) stopRecording();
-    activeId = null;
-    el.emptyMain.style.display = 'flex';
-    el.editor.style.display = 'none';
-    renderList();
-  }
-
-  function renderActions(m){
-    el.actionList.innerHTML = '';
-    (m.actions || []).forEach((a, idx) => {
-      const row = document.createElement('div');
-      row.className = 'action-item' + (a.done ? ' done' : '');
-      row.innerHTML = `
-        <div class="checkbox ${a.done ? 'checked' : ''}" data-idx="${idx}"></div>
-        <input type="text" class="action-text" data-idx="${idx}" placeholder="Descreva o item de ação" value="${escapeHtml(a.text)}">
-        <input type="text" class="action-owner" data-idx="${idx}" placeholder="Responsável" value="${escapeHtml(a.owner||'')}">
-        <button class="remove-action" data-idx="${idx}" title="Remover">×</button>
-      `;
-      el.actionList.appendChild(row);
-    });
-
-    el.actionList.querySelectorAll('.checkbox').forEach(cb=>{
-      cb.addEventListener('click', ()=>{
-        const idx = +cb.dataset.idx;
-        const m = meetings[activeId];
-        m.actions[idx].done = !m.actions[idx].done;
-        m.updatedAt = Date.now();
-        renderActions(m);
-        scheduleSave();
-      });
-    });
-    el.actionList.querySelectorAll('.action-text').forEach(inp=>{
-      inp.addEventListener('input', ()=>{
-        const idx = +inp.dataset.idx;
-        meetings[activeId].actions[idx].text = inp.value;
-        meetings[activeId].updatedAt = Date.now();
-        scheduleSave();
-      });
-    });
-    el.actionList.querySelectorAll('.action-owner').forEach(inp=>{
-      inp.addEventListener('input', ()=>{
-        const idx = +inp.dataset.idx;
-        meetings[activeId].actions[idx].owner = inp.value;
-        meetings[activeId].updatedAt = Date.now();
-        scheduleSave();
-      });
-    });
-    el.actionList.querySelectorAll('.remove-action').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const idx = +btn.dataset.idx;
-        const m = meetings[activeId];
-        m.actions.splice(idx,1);
-        m.updatedAt = Date.now();
-        renderActions(m);
-        scheduleSave();
-      });
-    });
-  }
-
-  function createMeeting(){
-    const id = uid();
-    const m = {
-      id,
-      title: '',
-      date: todayISO(),
-      time: nowTime(),
-      participants: '',
-      notes: '',
-      actions: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    meetings[id] = m;
-    persist(m);
-    selectMeeting(id);
-    el.title.focus();
-  }
-
-  document.getElementById('btn-new').addEventListener('click', createMeeting);
-
-  document.getElementById('btn-delete').addEventListener('click', async ()=>{
-    if(!activeId) return;
-    const m = meetings[activeId];
-    if(!confirm(`Excluir a reunião "${m.title || 'sem título'}"? Essa ação não pode ser desfeita.`)) return;
-    await removeMeeting(activeId);
-    delete meetings[activeId];
-    showEmptyMain();
-  });
-
-  document.getElementById('btn-add-action').addEventListener('click', ()=>{
-    if(!activeId) return;
-    const m = meetings[activeId];
-    m.actions = m.actions || [];
-    m.actions.push({ text:'', owner:'', done:false });
-    m.updatedAt = Date.now();
-    renderActions(m);
-    scheduleSave();
-    const inputs = el.actionList.querySelectorAll('.action-text');
-    if(inputs.length) inputs[inputs.length-1].focus();
-  });
-
-  [el.title, el.date, el.time, el.participants, el.notes, el.transcript].forEach(input=>{
-    input.addEventListener('input', ()=>{
-      if(!activeId) return;
-      const m = meetings[activeId];
-      m.title = el.title.value;
-      m.date = el.date.value;
-      m.time = el.time.value;
-      m.participants = el.participants.value;
-      m.notes = el.notes.value;
-      m.transcript = el.transcript.value;
-      m.updatedAt = Date.now();
-      scheduleSave();
-    });
-  });
-
-  el.search.addEventListener('input', renderList);
-
-  /* ===== EXPORTAÇÃO ===== */
-
-  const TEAL_RGB = [20, 184, 166];
-  const BLUE_RGB = [30, 58, 95];
-  const GRAY_RGB = [90, 105, 130];
-
-  function actionStatusLabel(a){ return a.done ? 'Concluído' : 'Pendente'; }
-
-  function exportPDF(meeting){
-    if(!window.jspdf){ alert('Biblioteca de PDF ainda carregando, tente novamente em instantes.'); return; }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pageW = doc.internal.pageSize.getWidth();
-    const marginX = 44;
-    let y = 0;
-
-    // Header band
-    doc.setFillColor(...BLUE_RGB);
-    doc.rect(0, 0, pageW, 74, 'F');
-    doc.setFillColor(...TEAL_RGB);
-    doc.rect(0, 74, pageW, 3, 'F');
-
-    doc.setTextColor(255,255,255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('PLASTICOMP', marginX, 30);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(200, 216, 228);
-    doc.text('PRODUÇÃO E CONTROLE (PCP)', marginX, 43);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9.5);
-    doc.setTextColor(190, 210, 225);
-    doc.text('ATA DE REUNIÃO', pageW - marginX, 30, { align: 'right' });
-
-    y = 104;
-
-    // Title — the meeting name is the main heading of the document
-    doc.setTextColor(20, 30, 45);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    const titleText = meeting.title || 'Reunião sem título';
-    const titleLines = doc.splitTextToSize(titleText, pageW - marginX*2);
-    doc.text(titleLines, marginX, y);
-    y += titleLines.length * 24 + 4;
-
-    // Meta info row
-    doc.setDrawColor(220, 226, 235);
-    doc.setLineWidth(0.6);
-    doc.line(marginX, y, pageW - marginX, y);
-    y += 18;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(...GRAY_RGB);
-    doc.text('DATA', marginX, y);
-    doc.text('HORÁRIO', marginX + 130, y);
-    doc.text('PARTICIPANTES', marginX + 240, y);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10.5);
-    doc.setTextColor(30, 40, 55);
-    doc.text(fmtDate(meeting.date), marginX, y + 14);
-    doc.text(meeting.time || '—', marginX + 130, y + 14);
-    const participantsLines = doc.splitTextToSize(meeting.participants || '—', pageW - marginX - 240 - marginX);
-    doc.text(participantsLines, marginX + 240, y + 14);
-
-    y += 14 + (participantsLines.length * 12) + 22;
-
-    // Notes section
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10.5);
-    doc.setTextColor(...BLUE_RGB);
-    doc.text('ANOTAÇÕES', marginX, y);
-    doc.setDrawColor(...TEAL_RGB);
-    doc.setLineWidth(1.4);
-    doc.line(marginX, y + 4, marginX + 62, y + 4);
-    y += 20;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(40, 48, 62);
-    const notesText = meeting.notes && meeting.notes.trim() ? meeting.notes : 'Nenhuma anotação registrada.';
-    const notesLines = doc.splitTextToSize(notesText, pageW - marginX*2);
-    doc.text(notesLines, marginX, y, { lineHeightFactor: 1.5 });
-    y += notesLines.length * 14 + 22;
-
-    // Transcript section (only if there is transcribed content)
-    if (meeting.transcript && meeting.transcript.trim()) {
-      if (y > 680) { doc.addPage(); y = 60; }
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10.5);
-      doc.setTextColor(...BLUE_RGB);
-      doc.text('TRANSCRIÇÃO', marginX, y);
-      doc.setDrawColor(...TEAL_RGB);
-      doc.setLineWidth(1.4);
-      doc.line(marginX, y + 4, marginX + 76, y + 4);
-      y += 20;
-
-      doc.setFont('helvetica', 'italic');
-      doc.setFontSize(9.5);
-      doc.setTextColor(40, 48, 62);
-      const transcriptLines = doc.splitTextToSize(meeting.transcript.trim(), pageW - marginX*2);
-      for (const line of transcriptLines) {
-        if (y > 770) { doc.addPage(); y = 60; }
-        doc.text(line, marginX, y, { lineHeightFactor: 1.5 });
-        y += 13;
-      }
-      y += 18;
-    }
-
-    // Action items
-    if (y > 680) { doc.addPage(); y = 60; }
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10.5);
-    doc.setTextColor(...BLUE_RGB);
-    doc.text('ITENS DE AÇÃO', marginX, y);
-    doc.setDrawColor(...TEAL_RGB);
-    doc.setLineWidth(1.4);
-    doc.line(marginX, y + 4, marginX + 78, y + 4);
-    y += 12;
-
-    const actions = meeting.actions || [];
-    if (actions.length > 0) {
-      doc.autoTable({
-        startY: y + 8,
-        margin: { left: marginX, right: marginX },
-        head: [['Item', 'Responsável', 'Status']],
-        body: actions.map(a => [a.text || '—', a.owner || '—', actionStatusLabel(a)]),
-        styles: { font: 'helvetica', fontSize: 9.5, cellPadding: 6, textColor: [35,42,55] },
-        headStyles: { fillColor: BLUE_RGB, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
-        alternateRowStyles: { fillColor: [246, 249, 251] },
-        columnStyles: { 1: { cellWidth: 110 }, 2: { cellWidth: 80 } },
-        didParseCell: function(data){
-          if (data.section === 'body' && data.column.index === 2) {
-            data.cell.styles.textColor = data.cell.raw === 'Concluído' ? [14,124,112] : [200,120,20];
-            data.cell.styles.fontStyle = 'bold';
-          }
-        }
-      });
-      y = doc.lastAutoTable.finalY + 30;
-    } else {
-      doc.setFont('helvetica', 'italic');
-      doc.setFontSize(10);
-      doc.setTextColor(...GRAY_RGB);
-      doc.text('Nenhum item de ação registrado.', marginX, y + 18);
-      y += 40;
-    }
-
-    // Signature lines
-    if (y > 700) { doc.addPage(); y = 60; }
-    y += 20;
-    doc.setDrawColor(200, 208, 220);
-    doc.setLineWidth(0.6);
-    doc.line(marginX, y, marginX + 200, y);
-    doc.line(pageW - marginX - 200, y, pageW - marginX, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(...GRAY_RGB);
-    doc.text('Responsável pela ata', marginX, y + 12);
-    doc.text('Aprovação', pageW - marginX - 200, y + 12);
-
-    // Footer
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(...GRAY_RGB);
-      doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, marginX, 812);
-      doc.text(`Página ${i} de ${pageCount}`, pageW - marginX, 812, { align: 'right' });
-    }
-
-    const safeName = (meeting.title || '').trim().replace(/[^\w\-À-ÿ ]+/g, '').replace(/\s+/g, '_').slice(0, 80);
-    doc.save(`${safeName || 'Reuniao_sem_titulo'}.pdf`);
-  }
-
-  function exportXLSX(meeting){
-    if(!window.XLSX){ alert('Biblioteca de Excel ainda carregando, tente novamente em instantes.'); return; }
-    const infoSheet = XLSX.utils.aoa_to_sheet([
-      ['ATA DE REUNIÃO — PLASTICOMP'],
-      [],
-      ['Título', meeting.title || ''],
-      ['Data', fmtDate(meeting.date)],
-      ['Horário', meeting.time || ''],
-      ['Participantes', meeting.participants || ''],
-      [],
-      ['Anotações'],
-      [meeting.notes || ''],
-      [],
-      ['Transcrição'],
-      [meeting.transcript || ''],
-    ]);
-    infoSheet['!cols'] = [{wch: 18}, {wch: 70}];
-
-    const actionsData = [['Item', 'Responsável', 'Status']]
-      .concat((meeting.actions || []).map(a => [a.text || '', a.owner || '', actionStatusLabel(a)]));
-    const actionsSheet = XLSX.utils.aoa_to_sheet(actionsData);
-    actionsSheet['!cols'] = [{wch: 45}, {wch: 20}, {wch: 14}];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, infoSheet, 'Reunião');
-    XLSX.utils.book_append_sheet(wb, actionsSheet, 'Itens de Ação');
-
-    const safeName = (meeting.title || '').trim().replace(/[^\w\-À-ÿ ]+/g, '').replace(/\s+/g, '_').slice(0, 80);
-    XLSX.writeFile(wb, `${safeName || 'Reuniao_sem_titulo'}.xlsx`);
-  }
-
-  function exportAllXLSX(){
-    if(!window.XLSX){ alert('Biblioteca de Excel ainda carregando, tente novamente em instantes.'); return; }
-    const all = Object.values(meetings).sort((a,b) => (a.date||'').localeCompare(b.date||''));
-    if (all.length === 0) { alert('Nenhuma reunião para exportar ainda.'); return; }
-
-    const summaryData = [['Título', 'Data', 'Horário', 'Participantes', 'Itens de Ação', 'Concluídos']]
-      .concat(all.map(m => {
-        const actions = m.actions || [];
-        const done = actions.filter(a => a.done).length;
-        return [m.title || '', fmtDate(m.date), m.time || '', m.participants || '', actions.length, done];
-      }));
-    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-    summarySheet['!cols'] = [{wch: 32}, {wch: 12}, {wch: 10}, {wch: 30}, {wch: 14}, {wch: 12}];
-
-    const actionsData = [['Reunião', 'Data', 'Item', 'Responsável', 'Status']];
-    all.forEach(m => {
-      (m.actions || []).forEach(a => {
-        actionsData.push([m.title || '', fmtDate(m.date), a.text || '', a.owner || '', actionStatusLabel(a)]);
-      });
-    });
-    const actionsSheet = XLSX.utils.aoa_to_sheet(actionsData);
-    actionsSheet['!cols'] = [{wch: 28}, {wch: 12}, {wch: 45}, {wch: 20}, {wch: 14}];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, summarySheet, 'Resumo de Reuniões');
-    XLSX.utils.book_append_sheet(wb, actionsSheet, 'Todos os Itens de Ação');
-    XLSX.writeFile(wb, `Reunioes_Plasticomp_${todayISO()}.xlsx`);
-  }
-
-  document.getElementById('btn-export-pdf').addEventListener('click', ()=>{
-    if(!activeId) return;
-    exportPDF(meetings[activeId]);
-  });
-  document.getElementById('btn-export-xlsx').addEventListener('click', ()=>{
-    if(!activeId) return;
-    exportXLSX(meetings[activeId]);
-  });
-  document.getElementById('btn-export-all').addEventListener('click', exportAllXLSX);
-
-  loadAll();
-})();
+setGreeting();
+loadMeetings();
 </script>
 </body>
 </html>

@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anotador de Reuniões</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg: #F5F5F7;
+    --bg-elevated: #FBFBFD;
+    --panel: rgba(255,255,255,0.82);
+    --panel-solid: #FFFFFF;
+    --panel-soft: #F0F0F2;
+    --line: rgba(0,0,0,0.08);
+    --line-soft: rgba(0,0,0,0.05);
+    --accent: #0071E3;
+    --accent-hover: #0077ED;
+    --accent-press: #006EDB;
+    --teal: #0F9E8E;
+    --teal-soft: rgba(15,158,142,0.10);
+    --text: #1D1D1F;
+    --text-dim: #6E6E73;
+    --text-faint: #9A9AA0;
+    --danger: #FF3B30;
+    --warn: #FF9F0A;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 1px rgba(0,0,0,0.03);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-lg: 0 20px 50px rgba(0,0,0,0.10), 0 4px 14px rgba(0,0,0,0.05);
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "SF Mono", ui-monospace, "Menlo", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    display:flex;
+    overflow:hidden;
+  }
+
+  /* SIDEBAR */
+  .sidebar{
+    width: 320px;
+    min-width: 320px;
+    height: 100vh;
+    background: var(--panel);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-right: 1px solid var(--line-soft);
+    display:flex;
+    flex-direction: column;
+  }
+  .brand{
+    padding: 28px 24px 18px;
+  }
+  .brand-mark{
+    display:flex; align-items:center; gap:10px;
+  }
+  .brand-dot{
+    width:9px; height:9px; border-radius:50%;
+    background: linear-gradient(135deg, var(--teal), #0B7A6E);
+    box-shadow: 0 0 0 4px var(--teal-soft);
+  }
+  .brand h1{
+    font-size: 17px;
+    margin:0;
+    letter-spacing: -0.01em;
+    font-weight: 650;
+    color: var(--text);
+  }
+  .brand p{
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--text-faint);
+    font-family: var(--sans);
+    letter-spacing: 0;
+  }
+
+  .new-btn{
+    margin: 6px 24px 18px;
+    padding: 11px 18px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 980px;
+    font-weight: 590;
+    font-size: 14px;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    box-shadow: 0 1px 2px rgba(0,113,227,0.25), 0 4px 12px rgba(0,113,227,0.18);
+    transition: background .18s var(--ease), transform .12s var(--ease), box-shadow .18s var(--ease);
+  }
+  .new-btn:hover{ background: var(--accent-hover); box-shadow: 0 4px 16px rgba(0,113,227,0.28); }
+  .new-btn:active{ background: var(--accent-press); transform: scale(0.97); }
+
+  .search-box{
+    margin: 0 24px 16px;
+    position: relative;
+  }
+  .search-box input{
+    width:100%;
+    background: var(--panel-soft);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 9px 12px 9px 32px;
+    color: var(--text);
+    font-size: 13.5px;
+    font-family: var(--sans);
+    transition: background .15s var(--ease), border-color .15s var(--ease);
+  }
+  .search-box input::placeholder{ color: var(--text-faint); }
+  .search-box input:focus{ outline:none; background: var(--panel-solid); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,113,227,0.12); }
+  .search-box::before{
+    content: "";
+    position:absolute; left:12px; top:50%; transform:translateY(-52%);
+    width:12px; height:12px;
+    border: 1.6px solid var(--text-faint);
+    border-radius: 50%;
+    pointer-events:none;
+  }
+  .search-box::after{
+    content:"";
+    position:absolute; left:20.5px; top:17.5px;
+    width:5px; height:1.6px;
+    background: var(--text-faint);
+    transform: rotate(45deg);
+    pointer-events:none;
+  }
+
+  .meeting-list{
+    flex:1;
+    overflow-y:auto;
+    padding: 0 14px 14px;
+  }
+  .list-label{
+    font-family: var(--sans);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--text-faint);
+    padding: 8px 10px 10px;
+    text-transform: none;
+  }
+  .meeting-item{
+    padding: 12px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-bottom: 3px;
+    border: 1px solid transparent;
+    transition: background .15s var(--ease);
+    position: relative;
+  }
+  .meeting-item:hover{ background: rgba(0,0,0,0.035); }
+  .meeting-item.active{
+    background: var(--panel-solid);
+    box-shadow: var(--shadow-sm), 0 0 0 1px var(--line-soft);
+  }
+  .meeting-item.active .meeting-item-title{ color: var(--accent); }
+  .meeting-item-title{
+    font-size: 13.5px; font-weight:600; color: var(--text);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    letter-spacing: -0.003em;
+    transition: color .15s var(--ease);
+  }
+  .meeting-item-meta{
+    font-size: 11.5px; color: var(--text-faint);
+    font-family: var(--sans);
+    margin-top: 3px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .pill-count{
+    background: var(--teal-soft);
+    border: none;
+    color: var(--teal);
+    padding: 1.5px 7px;
+    border-radius: 10px;
+    font-size: 10.5px;
+    font-weight: 600;
+  }
+  .empty-sidebar{
+    color: var(--text-faint);
+    font-size: 12.5px;
+    text-align:center;
+    padding: 34px 16px;
+    line-height: 1.7;
+  }
+
+  .sidebar-foot{
+    padding: 12px 24px 18px;
+    border-top: 1px solid var(--line-soft);
+    font-family: var(--sans);
+    font-size: 11.5px;
+    color: var(--text-faint);
+    display:flex; justify-content:space-between;
+    align-items: center;
+  }
+
+  /* MAIN */
+  .main{
+    flex:1;
+    height: 100vh;
+    display:flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-elevated);
+  }
+
+  .topbar{
+    padding: 26px 44px 22px;
+    border-bottom: 1px solid var(--line-soft);
+    display:flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    background: var(--panel);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+  .title-input{
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.022em;
+    width: 100%;
+    padding: 2px 0;
+    font-family: var(--sans);
+  }
+  .title-input:focus{ outline:none; }
+  .title-input::placeholder{ color: var(--text-faint); }
+
+  .meta-row{
+    display:flex; gap: 22px; margin-top: 14px; flex-wrap: wrap;
+  }
+  .meta-field{ display:flex; flex-direction:column; gap:5px; }
+  .meta-field label{
+    font-family: var(--sans); font-size: 11px; font-weight: 600; letter-spacing:0.01em;
+    color: var(--text-faint); text-transform: none;
+  }
+  .meta-field input{
+    background: var(--panel-soft);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 7px 10px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--sans);
+    min-width: 160px;
+    transition: background .15s var(--ease), box-shadow .15s var(--ease);
+  }
+  .meta-field input:focus{ outline:none; background: var(--panel-solid); box-shadow: 0 0 0 3px rgba(0,113,227,0.12); border-color: var(--accent); }
+
+  .topbar-actions{ display:flex; flex-direction: column; align-items:flex-end; gap:10px; }
+  .save-indicator{
+    font-family: var(--sans);
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--teal);
+    display:flex; align-items:center; gap:6px;
+    opacity: 0;
+    transition: opacity .3s var(--ease);
+  }
+  .save-indicator.show{ opacity: 1; }
+  .save-indicator .dot{
+    width:6px; height:6px; border-radius:50%; background: var(--teal);
+  }
+  .delete-btn{
+    background: transparent;
+    border: none;
+    color: var(--text-faint);
+    padding: 6px 4px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: color .15s var(--ease);
+  }
+  .delete-btn:hover{
+    color: var(--danger);
+  }
+
+  .export-row{
+    display:flex; gap:8px;
+  }
+  .export-btn{
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 980px;
+    font-size: 12.5px;
+    font-weight: 550;
+    cursor: pointer;
+    font-family: var(--sans);
+    white-space: nowrap;
+    box-shadow: var(--shadow-sm);
+    transition: all .15s var(--ease);
+  }
+  .export-btn:hover{
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+  .export-btn:active{ transform: translateY(0); }
+  .export-btn:disabled{
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .export-all-link{
+    background:none; border:none;
+    color: var(--text-faint);
+    font-family: var(--sans);
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    padding:0;
+    transition: color .15s var(--ease);
+  }
+  .export-all-link:hover{ color: var(--accent); }
+
+  .content{
+    flex:1;
+    overflow-y: auto;
+    padding: 32px 44px 80px;
+    max-width: 860px;
+  }
+
+  .section{
+    margin-bottom: 34px;
+  }
+  .section-head{
+    display:flex; align-items:center; gap:12px; margin-bottom: 14px;
+  }
+  .section-head h2{
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: -0.012em;
+    color: var(--text);
+    font-family: var(--sans);
+    margin:0;
+  }
+  .section-head .line{
+    flex:1; height:1px; background: var(--line);
+  }
+
+  .rec-timer{
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-faint);
+    min-width: 42px;
+    text-align: right;
+  }
+  .record-btn{
+    display:flex; align-items:center; gap:7px;
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 6px 14px 6px 10px;
+    border-radius: 980px;
+    font-size: 12.5px;
+    font-weight: 590;
+    font-family: var(--sans);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: all .15s var(--ease);
+  }
+  .record-btn:hover{ box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .record-btn:active{ transform: translateY(0); }
+  .record-dot{
+    width:9px; height:9px; border-radius:50%;
+    background: var(--danger);
+    flex-shrink:0;
+  }
+  .record-btn.recording{
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #fff;
+  }
+  .record-btn.recording .record-dot{
+    background: #fff;
+    animation: pulse-rec 1.2s ease-in-out infinite;
+  }
+  .record-btn:disabled{
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  @keyframes pulse-rec{
+    0%, 100%{ opacity: 1; transform: scale(1); }
+    50%{ opacity: 0.45; transform: scale(0.8); }
+  }
+  .rec-hint{
+    margin: -6px 0 12px;
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.5;
+  }
+  textarea.transcript{
+    min-height: 140px;
+    font-size: 14px;
+  }
+  textarea.transcript.live{
+    border-color: var(--danger);
+    box-shadow: 0 0 0 4px rgba(255,59,48,0.08);
+  }
+
+  textarea.notes{
+    width:100%;
+    min-height: 220px;
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px 22px;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.7;
+    letter-spacing: -0.006em;
+    font-family: var(--sans);
+    resize: vertical;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow .15s var(--ease), border-color .15s var(--ease);
+  }
+  textarea.notes:focus{ outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0,113,227,0.10); }
+  textarea.notes::placeholder{ color: var(--text-faint); }
+
+  /* ACTION ITEMS */
+  .action-list{ display:flex; flex-direction:column; gap:8px; }
+  .action-item{
+    display:flex; align-items:center; gap:12px;
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow .15s var(--ease), transform .15s var(--ease);
+  }
+  .action-item:hover{ box-shadow: var(--shadow-md); }
+  .action-item.done{ opacity: 0.55; }
+  .action-item.done .action-text{ text-decoration: line-through; }
+  .checkbox{
+    width:20px; height:20px;
+    border: 1.8px solid var(--text-faint);
+    border-radius: 50%;
+    cursor:pointer;
+    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    transition: all .15s var(--ease);
+  }
+  .checkbox:hover{ border-color: var(--teal); }
+  .checkbox.checked{
+    background: var(--teal);
+    border-color: var(--teal);
+  }
+  .checkbox.checked::after{
+    content:"✓";
+    color: #fff;
+    font-size: 12px;
+    font-weight:700;
+  }
+  .action-text{
+    flex:1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 14px;
+    letter-spacing: -0.006em;
+    font-family: var(--sans);
+  }
+  .action-text:focus{ outline:none; }
+  .action-text::placeholder{ color: var(--text-faint); }
+  .action-owner{
+    background: var(--panel-soft);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 5px 10px;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-family: var(--sans);
+    width: 120px;
+    flex-shrink:0;
+    transition: background .15s var(--ease);
+  }
+  .action-owner:focus{ outline:none; background: var(--panel-solid); box-shadow: 0 0 0 3px rgba(0,113,227,0.12); }
+  .action-owner::placeholder{ color: var(--text-faint); }
+  .remove-action{
+    background: none; border:none; color: var(--text-faint);
+    cursor:pointer; font-size: 18px; line-height:1; padding: 2px 4px;
+    flex-shrink:0;
+    transition: color .15s var(--ease);
+  }
+  .remove-action:hover{ color: var(--danger); }
+
+  .add-action-btn{
+    margin-top: 12px;
+    background: none;
+    border: 1.5px dashed var(--line);
+    color: var(--text-dim);
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    width:100%;
+    text-align: left;
+    font-family: var(--sans);
+    transition: all .15s var(--ease);
+  }
+  .add-action-btn:hover{
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,113,227,0.04);
+  }
+
+  /* EMPTY STATE */
+  .empty-main{
+    flex:1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color: var(--text-faint);
+    gap: 18px;
+  }
+  .empty-main .glyph{
+    width:64px; height:64px;
+    background: var(--panel-solid);
+    border-radius: 20px;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 26px;
+    font-weight: 300;
+    color: var(--accent);
+    box-shadow: var(--shadow-lg);
+  }
+  .empty-main h3{ margin:0; color: var(--text); font-size:19px; font-weight:650; letter-spacing:-0.015em; }
+  .empty-main p{ margin:0; font-size: 13.5px; max-width: 280px; text-align:center; line-height:1.6; color: var(--text-faint); }
+
+  ::-webkit-scrollbar{ width: 8px; height:8px; }
+  ::-webkit-scrollbar-track{ background: transparent; }
+  ::-webkit-scrollbar-thumb{ background: rgba(0,0,0,0.14); border-radius: 4px; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover{ background: rgba(0,0,0,0.24); }
+
+  @media (max-width: 720px){
+    .sidebar{ width: 100%; position:absolute; z-index:5; transform: translateX(-100%); transition: transform .25s var(--ease); }
+    .sidebar.open{ transform: translateX(0); }
+    .topbar{ padding: 18px 20px; }
+    .content{ padding: 20px 20px 48px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <div class="brand-dot"></div>
+        <h1>ANOTADOR DE REUNIÕES</h1>
+      </div>
+      <p id="storage-status">carregando…</p>
+    </div>
+
+    <button class="new-btn" id="btn-new">+ Nova reunião</button>
+
+    <div class="search-box">
+      <input type="text" id="search" placeholder="Buscar reunião...">
+    </div>
+
+    <div class="meeting-list" id="meeting-list">
+      <div class="list-label">Reuniões</div>
+      <div class="empty-sidebar" id="empty-sidebar">Nenhuma reunião ainda.<br>Clique em "Nova reunião" para começar.</div>
+    </div>
+
+    <div class="sidebar-foot">
+      <span id="foot-count">0 reuniões</span>
+      <button class="export-all-link" id="btn-export-all">exportar tudo</button>
+    </div>
+  </div>
+
+  <div class="main" id="main">
+    <div class="empty-main" id="empty-main">
+      <div class="glyph">+</div>
+      <h3>Nenhuma reunião selecionada</h3>
+      <p>Crie uma nova reunião ou selecione uma existente na barra lateral para começar a anotar.</p>
+    </div>
+
+    <div id="editor" style="display:none; height:100%; flex-direction:column;">
+      <div class="topbar">
+        <div style="flex:1;">
+          <input type="text" class="title-input" id="field-title" placeholder="Título da reunião">
+          <div class="meta-row">
+            <div class="meta-field">
+              <label>Data</label>
+              <input type="date" id="field-date">
+            </div>
+            <div class="meta-field">
+              <label>Horário</label>
+              <input type="time" id="field-time">
+            </div>
+            <div class="meta-field" style="flex:1;">
+              <label>Participantes</label>
+              <input type="text" id="field-participants" placeholder="Nomes separados por vírgula" style="width:100%; min-width: 220px;">
+            </div>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <div class="save-indicator" id="save-indicator"><span class="dot"></span> salvo</div>
+          <div class="export-row">
+            <button class="export-btn" id="btn-export-pdf">Exportar ata (PDF)</button>
+            <button class="export-btn" id="btn-export-xlsx">Exportar (Excel)</button>
+          </div>
+          <button class="delete-btn" id="btn-delete">Excluir reunião</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="section">
+          <div class="section-head">
+            <h2>Transcrição da reunião</h2>
+            <div class="line"></div>
+            <span class="rec-timer" id="rec-timer"></span>
+            <button class="record-btn" id="btn-record">
+              <span class="record-dot"></span>
+              <span id="record-label">Gravar</span>
+            </button>
+          </div>
+          <p class="rec-hint" id="rec-hint">Grava pelo microfone e transcreve automaticamente enquanto vocês falam. Funciona melhor no Chrome, com internet ativa.</p>
+          <textarea class="notes transcript" id="field-transcript" placeholder="A transcrição aparece aqui em tempo real. Você também pode editar ou colar texto manualmente."></textarea>
+        </div>
+
+        <div class="section">
+          <div class="section-head"><h2>Anotações</h2><div class="line"></div></div>
+          <textarea class="notes" id="field-notes" placeholder="Anote os pontos discutidos, decisões tomadas, pendências..."></textarea>
+        </div>
+
+        <div class="section">
+          <div class="section-head"><h2>Itens de ação</h2><div class="line"></div></div>
+          <div class="action-list" id="action-list"></div>
+          <button class="add-action-btn" id="btn-add-action">+ Adicionar item de ação</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const STORAGE_PREFIX = 'meeting:';
+  let meetings = {};
+  let activeId = null;
+  let saveTimer = null;
+
+  const el = {
+    list: document.getElementById('meeting-list'),
+    emptySidebar: document.getElementById('empty-sidebar'),
+    footCount: document.getElementById('foot-count'),
+    storageStatus: document.getElementById('storage-status'),
+    emptyMain: document.getElementById('empty-main'),
+    editor: document.getElementById('editor'),
+    title: document.getElementById('field-title'),
+    date: document.getElementById('field-date'),
+    time: document.getElementById('field-time'),
+    participants: document.getElementById('field-participants'),
+    notes: document.getElementById('field-notes'),
+    transcript: document.getElementById('field-transcript'),
+    recordBtn: document.getElementById('btn-record'),
+    recordLabel: document.getElementById('record-label'),
+    recTimer: document.getElementById('rec-timer'),
+    recHint: document.getElementById('rec-hint'),
+    actionList: document.getElementById('action-list'),
+    saveIndicator: document.getElementById('save-indicator'),
+    search: document.getElementById('search'),
+  };
+
+  function uid(){ return 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+  function todayISO(){ const d = new Date(); return d.toISOString().slice(0,10); }
+  function nowTime(){ const d = new Date(); return d.toTimeString().slice(0,5); }
+
+  /* ===== GRAVAÇÃO E TRANSCRIÇÃO ===== */
+  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let isRecording = false;
+  let manualStop = false;
+  let recStartTime = null;
+  let recTimerInterval = null;
+  let interimBuffer = '';
+
+  function setupRecognition(){
+    if(!SpeechRecognitionAPI) return null;
+    const r = new SpeechRecognitionAPI();
+    r.lang = 'pt-BR';
+    r.continuous = true;
+    r.interimResults = true;
+
+    r.onresult = (event) => {
+      let finalText = '';
+      let interimText = '';
+      for(let i = event.resultIndex; i < event.results.length; i++){
+        const res = event.results[i];
+        if(res.isFinal){
+          finalText += res[0].transcript;
+        } else {
+          interimText += res[0].transcript;
+        }
+      }
+      if(finalText.trim()){
+        const needsSpace = el.transcript.value && !/\s$/.test(el.transcript.value);
+        el.transcript.value += (needsSpace ? ' ' : '') + finalText.trim() + ' ';
+        el.transcript.dispatchEvent(new Event('input'));
+        el.transcript.scrollTop = el.transcript.scrollHeight;
+      }
+      interimBuffer = interimText;
+    };
+
+    r.onerror = (event) => {
+      if(event.error === 'no-speech' || event.error === 'aborted') return;
+      if(event.error === 'not-allowed' || event.error === 'permission-denied'){
+        el.recHint.textContent = 'Permissão de microfone negada. Habilite o acesso ao microfone nas configurações do navegador.';
+        stopRecording();
+        return;
+      }
+      if(event.error === 'network'){
+        el.recHint.textContent = 'Falha de conexão durante a transcrição. Verifique sua internet.';
+        return;
+      }
+    };
+
+    r.onend = () => {
+      // Chrome encerra o reconhecimento periodicamente; reinicia automaticamente se ainda estiver gravando
+      if(isRecording && !manualStop){
+        try{ r.start(); }catch(e){ /* já iniciado */ }
+      }
+    };
+
+    return r;
+  }
+
+  function formatElapsed(ms){
+    const totalSec = Math.floor(ms/1000);
+    const m = String(Math.floor(totalSec/60)).padStart(2,'0');
+    const s = String(totalSec%60).padStart(2,'0');
+    return `${m}:${s}`;
+  }
+
+  function startRecording(){
+    if(!SpeechRecognitionAPI){
+      el.recHint.textContent = 'Transcrição por voz não é suportada neste navegador. Tente abrir este arquivo no Google Chrome.';
+      return;
+    }
+    if(!activeId) return;
+    manualStop = false;
+    recognition = setupRecognition();
+    if(!recognition) return;
+    try{
+      recognition.start();
+    }catch(e){
+      console.error('Erro ao iniciar gravação', e);
+      return;
+    }
+    isRecording = true;
+    recStartTime = Date.now();
+    el.recordBtn.classList.add('recording');
+    el.recordLabel.textContent = 'Parar';
+    el.transcript.classList.add('live');
+    el.recHint.textContent = 'Gravando e transcrevendo… fale perto do microfone.';
+    recTimerInterval = setInterval(()=>{
+      el.recTimer.textContent = formatElapsed(Date.now() - recStartTime);
+    }, 500);
+  }
+
+  function stopRecording(){
+    manualStop = true;
+    isRecording = false;
+    if(recognition){
+      try{ recognition.stop(); }catch(e){ /* ignore */ }
+    }
+    clearInterval(recTimerInterval);
+    el.recTimer.textContent = '';
+    el.recordBtn.classList.remove('recording');
+    el.recordLabel.textContent = 'Gravar';
+    el.transcript.classList.remove('live');
+    el.recHint.textContent = 'Grava pelo microfone e transcreve automaticamente enquanto vocês falam. Funciona melhor no Chrome, com internet ativa.';
+    if(activeId){
+      const m = meetings[activeId];
+      if(m){ m.transcript = el.transcript.value; m.updatedAt = Date.now(); persist(m); }
+    }
+  }
+
+  el.recordBtn.addEventListener('click', ()=>{
+    if(!activeId){ return; }
+    if(isRecording){ stopRecording(); } else { startRecording(); }
+  });
+
+  if(!SpeechRecognitionAPI){
+    el.recHint.textContent = 'Transcrição por voz não é suportada neste navegador. Abra este arquivo no Google Chrome para gravar e transcrever.';
+  }
+
+
+  function fmtDate(iso){
+    if(!iso) return 'sem data';
+    const [y,m,d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  async function loadAll(){
+    try{
+      const res = await window.storage.list(STORAGE_PREFIX, false);
+      const keys = (res && res.keys) || [];
+      const loaded = {};
+      for(const k of keys){
+        try{
+          const item = await window.storage.get(k, false);
+          if(item && item.value){
+            const data = JSON.parse(item.value);
+            loaded[data.id] = data;
+          }
+        }catch(e){ /* skip unreadable key */ }
+      }
+      meetings = loaded;
+      el.storageStatus.textContent = 'dados salvos no dispositivo';
+    }catch(e){
+      console.error('Erro ao carregar reuniões', e);
+      el.storageStatus.textContent = 'erro ao carregar dados';
+    }
+    renderList();
+  }
+
+  async function persist(meeting){
+    try{
+      await window.storage.set(STORAGE_PREFIX + meeting.id, JSON.stringify(meeting), false);
+      flashSaved();
+    }catch(e){
+      console.error('Erro ao salvar', e);
+    }
+  }
+
+  async function removeMeeting(id){
+    try{
+      await window.storage.delete(STORAGE_PREFIX + id, false);
+    }catch(e){ console.error('Erro ao excluir', e); }
+  }
+
+  function flashSaved(){
+    el.saveIndicator.classList.add('show');
+    clearTimeout(flashSaved._t);
+    flashSaved._t = setTimeout(()=> el.saveIndicator.classList.remove('show'), 1400);
+  }
+
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{
+      if(!activeId) return;
+      const m = meetings[activeId];
+      if(m) persist(m);
+      renderList();
+    }, 500);
+  }
+
+  function renderList(){
+    const q = (el.search.value || '').toLowerCase().trim();
+    const items = Object.values(meetings)
+      .filter(m => !q || (m.title||'').toLowerCase().includes(q) || (m.participants||'').toLowerCase().includes(q))
+      .sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
+
+    el.list.querySelectorAll('.meeting-item').forEach(n => n.remove());
+    el.footCount.textContent = `${Object.keys(meetings).length} reuni${Object.keys(meetings).length===1?'ão':'ões'}`;
+
+    if(items.length === 0){
+      el.emptySidebar.style.display = 'block';
+      return;
+    }
+    el.emptySidebar.style.display = 'none';
+
+    for(const m of items){
+      const done = (m.actions||[]).filter(a=>a.done).length;
+      const total = (m.actions||[]).length;
+      const div = document.createElement('div');
+      div.className = 'meeting-item' + (m.id === activeId ? ' active' : '');
+      div.innerHTML = `
+        <div class="meeting-item-title">${escapeHtml(m.title) || 'Sem título'}</div>
+        <div class="meeting-item-meta">
+          <span>${fmtDate(m.date)}${m.time ? ' · ' + m.time : ''}</span>
+          ${total > 0 ? `<span class="pill-count">${done}/${total}</span>` : ''}
+        </div>`;
+      div.addEventListener('click', ()=> selectMeeting(m.id));
+      el.list.appendChild(div);
+    }
+  }
+
+  function escapeHtml(s){
+    if(!s) return '';
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function selectMeeting(id){
+    if(isRecording) stopRecording();
+    activeId = id;
+    const m = meetings[id];
+    if(!m){ showEmptyMain(); return; }
+    el.emptyMain.style.display = 'none';
+    el.editor.style.display = 'flex';
+
+    el.title.value = m.title || '';
+    el.date.value = m.date || '';
+    el.time.value = m.time || '';
+    el.participants.value = m.participants || '';
+    el.notes.value = m.notes || '';
+    el.transcript.value = m.transcript || '';
+    renderActions(m);
+    renderList();
+  }
+
+  function showEmptyMain(){
+    if(isRecording) stopRecording();
+    activeId = null;
+    el.emptyMain.style.display = 'flex';
+    el.editor.style.display = 'none';
+    renderList();
+  }
+
+  function renderActions(m){
+    el.actionList.innerHTML = '';
+    (m.actions || []).forEach((a, idx) => {
+      const row = document.createElement('div');
+      row.className = 'action-item' + (a.done ? ' done' : '');
+      row.innerHTML = `
+        <div class="checkbox ${a.done ? 'checked' : ''}" data-idx="${idx}"></div>
+        <input type="text" class="action-text" data-idx="${idx}" placeholder="Descreva o item de ação" value="${escapeHtml(a.text)}">
+        <input type="text" class="action-owner" data-idx="${idx}" placeholder="Responsável" value="${escapeHtml(a.owner||'')}">
+        <button class="remove-action" data-idx="${idx}" title="Remover">×</button>
+      `;
+      el.actionList.appendChild(row);
+    });
+
+    el.actionList.querySelectorAll('.checkbox').forEach(cb=>{
+      cb.addEventListener('click', ()=>{
+        const idx = +cb.dataset.idx;
+        const m = meetings[activeId];
+        m.actions[idx].done = !m.actions[idx].done;
+        m.updatedAt = Date.now();
+        renderActions(m);
+        scheduleSave();
+      });
+    });
+    el.actionList.querySelectorAll('.action-text').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const idx = +inp.dataset.idx;
+        meetings[activeId].actions[idx].text = inp.value;
+        meetings[activeId].updatedAt = Date.now();
+        scheduleSave();
+      });
+    });
+    el.actionList.querySelectorAll('.action-owner').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const idx = +inp.dataset.idx;
+        meetings[activeId].actions[idx].owner = inp.value;
+        meetings[activeId].updatedAt = Date.now();
+        scheduleSave();
+      });
+    });
+    el.actionList.querySelectorAll('.remove-action').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const idx = +btn.dataset.idx;
+        const m = meetings[activeId];
+        m.actions.splice(idx,1);
+        m.updatedAt = Date.now();
+        renderActions(m);
+        scheduleSave();
+      });
+    });
+  }
+
+  function createMeeting(){
+    const id = uid();
+    const m = {
+      id,
+      title: '',
+      date: todayISO(),
+      time: nowTime(),
+      participants: '',
+      notes: '',
+      actions: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    meetings[id] = m;
+    persist(m);
+    selectMeeting(id);
+    el.title.focus();
+  }
+
+  document.getElementById('btn-new').addEventListener('click', createMeeting);
+
+  document.getElementById('btn-delete').addEventListener('click', async ()=>{
+    if(!activeId) return;
+    const m = meetings[activeId];
+    if(!confirm(`Excluir a reunião "${m.title || 'sem título'}"? Essa ação não pode ser desfeita.`)) return;
+    await removeMeeting(activeId);
+    delete meetings[activeId];
+    showEmptyMain();
+  });
+
+  document.getElementById('btn-add-action').addEventListener('click', ()=>{
+    if(!activeId) return;
+    const m = meetings[activeId];
+    m.actions = m.actions || [];
+    m.actions.push({ text:'', owner:'', done:false });
+    m.updatedAt = Date.now();
+    renderActions(m);
+    scheduleSave();
+    const inputs = el.actionList.querySelectorAll('.action-text');
+    if(inputs.length) inputs[inputs.length-1].focus();
+  });
+
+  [el.title, el.date, el.time, el.participants, el.notes, el.transcript].forEach(input=>{
+    input.addEventListener('input', ()=>{
+      if(!activeId) return;
+      const m = meetings[activeId];
+      m.title = el.title.value;
+      m.date = el.date.value;
+      m.time = el.time.value;
+      m.participants = el.participants.value;
+      m.notes = el.notes.value;
+      m.transcript = el.transcript.value;
+      m.updatedAt = Date.now();
+      scheduleSave();
+    });
+  });
+
+  el.search.addEventListener('input', renderList);
+
+  /* ===== EXPORTAÇÃO ===== */
+
+  const TEAL_RGB = [20, 184, 166];
+  const BLUE_RGB = [30, 58, 95];
+  const GRAY_RGB = [90, 105, 130];
+
+  function actionStatusLabel(a){ return a.done ? 'Concluído' : 'Pendente'; }
+
+  function exportPDF(meeting){
+    if(!window.jspdf){ alert('Biblioteca de PDF ainda carregando, tente novamente em instantes.'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const marginX = 44;
+    let y = 0;
+
+    // Header band
+    doc.setFillColor(...BLUE_RGB);
+    doc.rect(0, 0, pageW, 74, 'F');
+    doc.setFillColor(...TEAL_RGB);
+    doc.rect(0, 74, pageW, 3, 'F');
+
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('PLASTICOMP', marginX, 30);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(200, 216, 228);
+    doc.text('PRODUÇÃO E CONTROLE (PCP)', marginX, 43);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(190, 210, 225);
+    doc.text('ATA DE REUNIÃO', pageW - marginX, 30, { align: 'right' });
+
+    y = 104;
+
+    // Title — the meeting name is the main heading of the document
+    doc.setTextColor(20, 30, 45);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    const titleText = meeting.title || 'Reunião sem título';
+    const titleLines = doc.splitTextToSize(titleText, pageW - marginX*2);
+    doc.text(titleLines, marginX, y);
+    y += titleLines.length * 24 + 4;
+
+    // Meta info row
+    doc.setDrawColor(220, 226, 235);
+    doc.setLineWidth(0.6);
+    doc.line(marginX, y, pageW - marginX, y);
+    y += 18;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...GRAY_RGB);
+    doc.text('DATA', marginX, y);
+    doc.text('HORÁRIO', marginX + 130, y);
+    doc.text('PARTICIPANTES', marginX + 240, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10.5);
+    doc.setTextColor(30, 40, 55);
+    doc.text(fmtDate(meeting.date), marginX, y + 14);
+    doc.text(meeting.time || '—', marginX + 130, y + 14);
+    const participantsLines = doc.splitTextToSize(meeting.participants || '—', pageW - marginX - 240 - marginX);
+    doc.text(participantsLines, marginX + 240, y + 14);
+
+    y += 14 + (participantsLines.length * 12) + 22;
+
+    // Notes section
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(...BLUE_RGB);
+    doc.text('ANOTAÇÕES', marginX, y);
+    doc.setDrawColor(...TEAL_RGB);
+    doc.setLineWidth(1.4);
+    doc.line(marginX, y + 4, marginX + 62, y + 4);
+    y += 20;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(40, 48, 62);
+    const notesText = meeting.notes && meeting.notes.trim() ? meeting.notes : 'Nenhuma anotação registrada.';
+    const notesLines = doc.splitTextToSize(notesText, pageW - marginX*2);
+    doc.text(notesLines, marginX, y, { lineHeightFactor: 1.5 });
+    y += notesLines.length * 14 + 22;
+
+    // Transcript section (only if there is transcribed content)
+    if (meeting.transcript && meeting.transcript.trim()) {
+      if (y > 680) { doc.addPage(); y = 60; }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(...BLUE_RGB);
+      doc.text('TRANSCRIÇÃO', marginX, y);
+      doc.setDrawColor(...TEAL_RGB);
+      doc.setLineWidth(1.4);
+      doc.line(marginX, y + 4, marginX + 76, y + 4);
+      y += 20;
+
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(9.5);
+      doc.setTextColor(40, 48, 62);
+      const transcriptLines = doc.splitTextToSize(meeting.transcript.trim(), pageW - marginX*2);
+      for (const line of transcriptLines) {
+        if (y > 770) { doc.addPage(); y = 60; }
+        doc.text(line, marginX, y, { lineHeightFactor: 1.5 });
+        y += 13;
+      }
+      y += 18;
+    }
+
+    // Action items
+    if (y > 680) { doc.addPage(); y = 60; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(...BLUE_RGB);
+    doc.text('ITENS DE AÇÃO', marginX, y);
+    doc.setDrawColor(...TEAL_RGB);
+    doc.setLineWidth(1.4);
+    doc.line(marginX, y + 4, marginX + 78, y + 4);
+    y += 12;
+
+    const actions = meeting.actions || [];
+    if (actions.length > 0) {
+      doc.autoTable({
+        startY: y + 8,
+        margin: { left: marginX, right: marginX },
+        head: [['Item', 'Responsável', 'Status']],
+        body: actions.map(a => [a.text || '—', a.owner || '—', actionStatusLabel(a)]),
+        styles: { font: 'helvetica', fontSize: 9.5, cellPadding: 6, textColor: [35,42,55] },
+        headStyles: { fillColor: BLUE_RGB, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+        alternateRowStyles: { fillColor: [246, 249, 251] },
+        columnStyles: { 1: { cellWidth: 110 }, 2: { cellWidth: 80 } },
+        didParseCell: function(data){
+          if (data.section === 'body' && data.column.index === 2) {
+            data.cell.styles.textColor = data.cell.raw === 'Concluído' ? [14,124,112] : [200,120,20];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      });
+      y = doc.lastAutoTable.finalY + 30;
+    } else {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(10);
+      doc.setTextColor(...GRAY_RGB);
+      doc.text('Nenhum item de ação registrado.', marginX, y + 18);
+      y += 40;
+    }
+
+    // Signature lines
+    if (y > 700) { doc.addPage(); y = 60; }
+    y += 20;
+    doc.setDrawColor(200, 208, 220);
+    doc.setLineWidth(0.6);
+    doc.line(marginX, y, marginX + 200, y);
+    doc.line(pageW - marginX - 200, y, pageW - marginX, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...GRAY_RGB);
+    doc.text('Responsável pela ata', marginX, y + 12);
+    doc.text('Aprovação', pageW - marginX - 200, y + 12);
+
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...GRAY_RGB);
+      doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, marginX, 812);
+      doc.text(`Página ${i} de ${pageCount}`, pageW - marginX, 812, { align: 'right' });
+    }
+
+    const safeName = (meeting.title || '').trim().replace(/[^\w\-À-ÿ ]+/g, '').replace(/\s+/g, '_').slice(0, 80);
+    doc.save(`${safeName || 'Reuniao_sem_titulo'}.pdf`);
+  }
+
+  function exportXLSX(meeting){
+    if(!window.XLSX){ alert('Biblioteca de Excel ainda carregando, tente novamente em instantes.'); return; }
+    const infoSheet = XLSX.utils.aoa_to_sheet([
+      ['ATA DE REUNIÃO — PLASTICOMP'],
+      [],
+      ['Título', meeting.title || ''],
+      ['Data', fmtDate(meeting.date)],
+      ['Horário', meeting.time || ''],
+      ['Participantes', meeting.participants || ''],
+      [],
+      ['Anotações'],
+      [meeting.notes || ''],
+      [],
+      ['Transcrição'],
+      [meeting.transcript || ''],
+    ]);
+    infoSheet['!cols'] = [{wch: 18}, {wch: 70}];
+
+    const actionsData = [['Item', 'Responsável', 'Status']]
+      .concat((meeting.actions || []).map(a => [a.text || '', a.owner || '', actionStatusLabel(a)]));
+    const actionsSheet = XLSX.utils.aoa_to_sheet(actionsData);
+    actionsSheet['!cols'] = [{wch: 45}, {wch: 20}, {wch: 14}];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, infoSheet, 'Reunião');
+    XLSX.utils.book_append_sheet(wb, actionsSheet, 'Itens de Ação');
+
+    const safeName = (meeting.title || '').trim().replace(/[^\w\-À-ÿ ]+/g, '').replace(/\s+/g, '_').slice(0, 80);
+    XLSX.writeFile(wb, `${safeName || 'Reuniao_sem_titulo'}.xlsx`);
+  }
+
+  function exportAllXLSX(){
+    if(!window.XLSX){ alert('Biblioteca de Excel ainda carregando, tente novamente em instantes.'); return; }
+    const all = Object.values(meetings).sort((a,b) => (a.date||'').localeCompare(b.date||''));
+    if (all.length === 0) { alert('Nenhuma reunião para exportar ainda.'); return; }
+
+    const summaryData = [['Título', 'Data', 'Horário', 'Participantes', 'Itens de Ação', 'Concluídos']]
+      .concat(all.map(m => {
+        const actions = m.actions || [];
+        const done = actions.filter(a => a.done).length;
+        return [m.title || '', fmtDate(m.date), m.time || '', m.participants || '', actions.length, done];
+      }));
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    summarySheet['!cols'] = [{wch: 32}, {wch: 12}, {wch: 10}, {wch: 30}, {wch: 14}, {wch: 12}];
+
+    const actionsData = [['Reunião', 'Data', 'Item', 'Responsável', 'Status']];
+    all.forEach(m => {
+      (m.actions || []).forEach(a => {
+        actionsData.push([m.title || '', fmtDate(m.date), a.text || '', a.owner || '', actionStatusLabel(a)]);
+      });
+    });
+    const actionsSheet = XLSX.utils.aoa_to_sheet(actionsData);
+    actionsSheet['!cols'] = [{wch: 28}, {wch: 12}, {wch: 45}, {wch: 20}, {wch: 14}];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, summarySheet, 'Resumo de Reuniões');
+    XLSX.utils.book_append_sheet(wb, actionsSheet, 'Todos os Itens de Ação');
+    XLSX.writeFile(wb, `Reunioes_Plasticomp_${todayISO()}.xlsx`);
+  }
+
+  document.getElementById('btn-export-pdf').addEventListener('click', ()=>{
+    if(!activeId) return;
+    exportPDF(meetings[activeId]);
+  });
+  document.getElementById('btn-export-xlsx').addEventListener('click', ()=>{
+    if(!activeId) return;
+    exportXLSX(meetings[activeId]);
+  });
+  document.getElementById('btn-export-all').addEventListener('click', exportAllXLSX);
+
+  loadAll();
+})();
+</script>
+</body>
+</html>

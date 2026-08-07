@@ -99,6 +99,10 @@
   .rec-status{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono';margin-top:8px;}
   .transcript-box{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:12px;font-size:13px;line-height:1.6;max-height:220px;overflow-y:auto;white-space:pre-wrap;}
   .transcript-box.empty2{color:var(--muted);font-style:italic;}
+  textarea#transcript-edit{min-height:180px;line-height:1.6;}
+  .transcript-actions{display:flex;gap:8px;margin-top:8px;align-items:center;}
+  .transcript-actions .btn-ghost{margin-top:0;flex:1;}
+  .save-feedback{font-size:12px;color:var(--calm);white-space:nowrap;}
   .note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;}
   .share-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;}
   .share-row button{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 4px;color:var(--text);font-family:inherit;font-size:11px;cursor:pointer;text-align:center;line-height:1.7;}
@@ -373,8 +377,12 @@ function openDetail(id){
       </div>
 
       <label>Transcrição</label>
-      <div class="transcript-box ${m.transcript?'':'empty2'}" id="transcript-view">${m.transcript ? escapeHtml(m.transcript) : 'Nenhuma transcrição ainda. Grave a reunião para transcrever automaticamente.'}</div>
-      <p class="note">A transcrição usa reconhecimento de voz do navegador (em português) e funciona melhor no Chrome. O áudio gravado não é enviado nem salvo — apenas o texto transcrito é guardado nesta reunião.</p>
+      <textarea id="transcript-edit" placeholder="Nenhuma transcrição ainda. Grave a reunião para transcrever automaticamente, ou digite/edite aqui.">${m.transcript ? escapeHtml(m.transcript) : ''}</textarea>
+      <div class="transcript-actions">
+        <button class="btn-ghost" onclick="saveTranscriptEdit('${m.id}')">Salvar edição</button>
+        <span class="save-feedback" id="edit-feedback"></span>
+      </div>
+      <p class="note">A transcrição usa reconhecimento de voz do navegador (em português) e funciona melhor no Chrome. Você pode editar o texto acima livremente — o que estiver salvo aqui é o que vai para o WhatsApp, o PDF e a ata.</p>
 
       <div id="share-actions">${renderShareActions(m)}</div>
 
@@ -457,6 +465,20 @@ async function deleteMeeting(id){
 
 function getMeeting(){ return meetings.find(m=>m.id===activeMeetingId); }
 
+async function saveTranscriptEdit(id){
+  const m = meetings.find(x=>x.id===id);
+  if(!m) return;
+  const textarea = document.getElementById('transcript-edit');
+  if(!textarea) return;
+  m.transcript = textarea.value.trim();
+  await saveMeetings();
+  const shareDiv = document.getElementById('share-actions');
+  if(shareDiv) shareDiv.innerHTML = renderShareActions(m);
+  const fb = document.getElementById('edit-feedback');
+  if(fb){ fb.textContent = 'Salvo!'; setTimeout(()=>{ if(fb) fb.textContent=''; }, 1800); }
+  render();
+}
+
 async function toggleRecording(){
   if(recording){ await stopEverything(true); }
   else { await startRecording(); }
@@ -507,10 +529,9 @@ async function startRecording(){
         if(e.results[i].isFinal) finalTranscript += t + ' ';
         else interim += t;
       }
-      const view = document.getElementById('transcript-view');
+      const view = document.getElementById('transcript-edit');
       if(view){
-        view.classList.remove('empty2');
-        view.textContent = finalTranscript + interim;
+        view.value = finalTranscript + interim;
       }
     };
     recognition.onerror = ()=>{};
@@ -537,6 +558,8 @@ async function stopEverything(persist){
     const m = getMeeting();
     if(m){
       m.transcript = finalTranscript.trim();
+      const textarea = document.getElementById('transcript-edit');
+      if(textarea) textarea.value = m.transcript;
       await saveMeetings();
       const shareDiv = document.getElementById('share-actions');
       if(shareDiv) shareDiv.innerHTML = renderShareActions(m);
